@@ -208,6 +208,13 @@ export function distribuicaoIngressos() {
   return result;
 }
 
+export const COUPON_PILL: Record<CouponCategory, string> = {
+  "Aluno Interno":    "bg-blue-100 text-blue-800",
+  "Servidor Público": "bg-purple-100 text-purple-800",
+  "Aluno Externo":    "bg-teal-100 text-teal-800",
+  "Público Geral":    "bg-gray-100 text-gray-700",
+};
+
 export const COUPON_COLORS: Record<string, string> = {
   "Aluno Interno": "#731111",
   "Servidor Público": "#b5736f",

@@ -9,7 +9,7 @@ import {
   PieChart, Pie, Cell, Legend,
 } from "recharts";
 import {
-  inscritos, trabalhos, inscricoesPorDia, distribuicaoCupons, COUPON_COLORS, INGRESSO_LABELS,
+  inscritos, trabalhos, inscricoesPorDia, distribuicaoCupons, distribuicaoIngressos, COUPON_COLORS, INGRESSO_LABELS,
 } from "@/data/mockAdmin";
 
 export const Route = createFileRoute("/admin/dashboard")({
@@ -29,13 +29,14 @@ const KPIS = [
 ];
 
 function Dashboard() {
-  const pieData = Object.entries(distribuicaoCupons).map(([k, v]) => ({ name: k, value: v }));
+  const pieData = Object.entries(distribuicaoCupons()).map(([k, v]) => ({ name: k, value: v }));
   const totalRegistrants = pieData.reduce((s, x) => s + x.value, 0);
 
   // Distribuição por tipo de ingresso
+  const _ingressoMap = distribuicaoIngressos();
   const ingressoData = (["palestra", "dia", "completo"] as const).map((tipo) => ({
     name: INGRESSO_LABELS[tipo],
-    value: inscritos.filter((i) => i.tipoIngresso === tipo).length,
+    value: _ingressoMap[tipo],
   }));
   const INGRESSO_COLORS: Record<string, string> = {
     "Palestra Avulsa": "#b5736f",
@@ -90,7 +91,7 @@ function Dashboard() {
           </div>
           <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={inscricoesPorDia} margin={{ top: 10, right: 10, bottom: 0, left: -20 }}>
+              <AreaChart data={inscricoesPorDia()} margin={{ top: 10, right: 10, bottom: 0, left: -20 }}>
                 <defs>
                   <linearGradient id="gWine" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="#731111" stopOpacity={0.18} />

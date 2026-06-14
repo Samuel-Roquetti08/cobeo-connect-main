@@ -3,7 +3,7 @@ import { AdminShell } from "@/components/admin/AdminShell";
 import { StatusBadge } from "@/components/admin/StatusBadge";
 import { useMemo, useState } from "react";
 import { Search, Download, Eye, ChevronDown, ChevronLeft, ChevronRight, X } from "lucide-react";
-import { inscritos, type Inscrito, type Status } from "@/data/mockAdmin";
+import { inscritos, INGRESSO_LABELS, type Inscrito, type Status } from "@/data/mockAdmin";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/admin/inscritos")({
