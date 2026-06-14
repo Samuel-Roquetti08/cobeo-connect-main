@@ -15,17 +15,17 @@ interface FieldMeta {
 }
 
 export interface DadosFormErrors {
-  nome: FieldMeta;
-  email: FieldMeta;
+  nome:     FieldMeta;
+  email:    FieldMeta;
   telefone: FieldMeta;
   whatsapp: FieldMeta;
 }
 
 export const EMPTY_ERRORS: DadosFormErrors = {
-  nome:      { touched: false, error: "" },
-  email:     { touched: false, error: "" },
-  telefone:  { touched: false, error: "" },
-  whatsapp:  { touched: false, error: "" },
+  nome:     { touched: false, error: "" },
+  email:    { touched: false, error: "" },
+  telefone: { touched: false, error: "" },
+  whatsapp: { touched: false, error: "" },
 };
 
 export function validateDados(data: DadosFormState): DadosFormErrors {
@@ -56,14 +56,7 @@ export function isDadosValid(errors: DadosFormErrors): boolean {
   return Object.values(errors).every((f) => f.touched && f.error === "");
 }
 
-function FieldError({ msg }: { msg: string }) {
-  if (!msg) return null;
-  return (
-    <p role="alert" className="mt-1 text-[11px] text-destructive font-body">
-      {msg}
-    </p>
-  );
-}
+/* ── InputField ────────────────────────────────────────────────────────────── */
 
 interface InputFieldProps {
   id: string;
@@ -87,9 +80,14 @@ function InputField({
   const hasError = error?.touched && !!error.error;
   return (
     <div>
-      <label htmlFor={id} className="mb-1 block font-body text-xs font-semibold text-foreground">
+      <label
+        htmlFor={id}
+        className="mb-1 block font-body text-xs font-semibold text-foreground"
+      >
         {label}
-        {required && <span className="ml-0.5 text-destructive" aria-hidden="true">*</span>}
+        {required && (
+          <span className="ml-0.5 text-destructive" aria-hidden="true">*</span>
+        )}
       </label>
       <input
         id={id}
@@ -106,20 +104,26 @@ function InputField({
         aria-describedby={hasError ? `${id}-error` : undefined}
         className={`w-full rounded-md border px-3 py-2 font-body text-sm outline-none transition-colors
           focus:ring-2 focus:ring-primary/20
-          disabled:bg-background disabled:cursor-not-allowed
+          disabled:cursor-not-allowed disabled:bg-muted/30 disabled:text-muted-foreground
           ${hasError
             ? "border-destructive bg-destructive/5 focus:border-destructive"
             : "border-input bg-surface focus:border-primary"
           }`}
       />
       {hasError && (
-        <p id={`${id}-error`} role="alert" className="mt-1 font-body text-[11px] text-destructive">
+        <p
+          id={`${id}-error`}
+          role="alert"
+          className="mt-1 font-body text-[11px] text-destructive"
+        >
           {error?.error}
         </p>
       )}
     </div>
   );
 }
+
+/* ── DadosForm ─────────────────────────────────────────────────────────────── */
 
 interface DadosFormProps {
   value: DadosFormState;
@@ -131,15 +135,41 @@ interface DadosFormProps {
 export function DadosForm({ value, onChange, errors, onErrors }: DadosFormProps) {
   function handleBlur(field: keyof DadosFormErrors) {
     const validated = validateDados(value);
-    onErrors({
-      ...errors,
-      [field]: { touched: true, error: validated[field].error },
-    });
+    onErrors({ ...errors, [field]: { touched: true, error: validated[field].error } });
   }
 
   function setField<K extends keyof DadosFormState>(field: K, val: DadosFormState[K]) {
     onChange({ ...value, [field]: val });
   }
+
+  function handleTelefoneChange(raw: string) {
+    const masked = maskPhone(raw);
+    // Se sameWhats está marcado, espelha o telefone no whatsapp
+    if (value.sameWhats) {
+      onChange({ ...value, telefone: masked, whatsapp: masked });
+    } else {
+      setField("telefone", masked);
+    }
+  }
+
+  function handleWhatsappChange(raw: string) {
+    setField("whatsapp", maskPhone(raw));
+  }
+
+  function handleSameWhatsChange(checked: boolean) {
+    if (checked) {
+      // Marcar: copia telefone para whatsapp e desabilita o campo
+      onChange({ ...value, sameWhats: true, whatsapp: value.telefone });
+    } else {
+      // Desmarcar: libera o campo e limpa o whatsapp para o usuário digitar
+      onChange({ ...value, sameWhats: false, whatsapp: "" });
+    }
+  }
+
+  // Valor exibido no campo WhatsApp:
+  // - se sameWhats: mostra o telefone (espelhado, campo desabilitado)
+  // - se não sameWhats: mostra o whatsapp independente
+  const whatsappDisplayValue = value.sameWhats ? value.telefone : value.whatsapp;
 
   return (
     <fieldset className="grid gap-4 border-0 p-0 sm:grid-cols-2">
@@ -175,7 +205,7 @@ export function DadosForm({ value, onChange, errors, onErrors }: DadosFormProps)
         />
       </div>
 
-      {/* Telefone — com máscara */}
+      {/* Telefone */}
       <InputField
         id="campo-telefone"
         label="Telefone"
@@ -184,11 +214,7 @@ export function DadosForm({ value, onChange, errors, onErrors }: DadosFormProps)
         autoComplete="tel"
         placeholder="(11) 99999-9999"
         value={value.telefone}
-        onChange={(v) => {
-          const masked = maskPhone(v);
-          setField("telefone", masked);
-          if (value.sameWhats) setField("whatsapp", masked);
-        }}
+        onChange={handleTelefoneChange}
         onBlur={() => handleBlur("telefone")}
         error={errors.telefone}
       />
@@ -202,9 +228,9 @@ export function DadosForm({ value, onChange, errors, onErrors }: DadosFormProps)
           inputMode="numeric"
           autoComplete="tel"
           placeholder="(11) 99999-9999"
-          value={value.sameWhats ? value.telefone : value.whatsapp}
+          value={whatsappDisplayValue}
           disabled={value.sameWhats}
-          onChange={(v) => setField("whatsapp", maskPhone(v))}
+          onChange={handleWhatsappChange}
           onBlur={() => handleBlur("whatsapp")}
           error={value.sameWhats ? undefined : errors.whatsapp}
         />
@@ -212,11 +238,8 @@ export function DadosForm({ value, onChange, errors, onErrors }: DadosFormProps)
           <input
             type="checkbox"
             checked={value.sameWhats}
-            onChange={(e) => {
-              setField("sameWhats", e.target.checked);
-              if (e.target.checked) setField("whatsapp", value.telefone);
-            }}
-            className="h-3.5 w-3.5 accent-primary"
+            onChange={(e) => handleSameWhatsChange(e.target.checked)}
+            className="h-3.5 w-3.5 accent-primary cursor-pointer"
           />
           Mesmo número do telefone
         </label>
