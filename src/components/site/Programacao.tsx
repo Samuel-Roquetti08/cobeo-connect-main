@@ -13,12 +13,14 @@ export function Programacao() {
       <div className="mx-auto max-w-5xl px-4 sm:px-6">
         <SectionTitle label="Três dias de imersão" title="Programação" align="center" />
 
+        {/* Tabs dos dias */}
         <div className="mt-10 flex flex-wrap justify-center gap-3">
           {programacao.map((d, i) => (
             <button
               key={d.dia}
               onClick={() => setTab(i)}
-              className={`rounded-full px-5 py-2 font-body text-sm font-medium transition-colors ${
+              aria-pressed={tab === i}
+              className={`rounded-full px-5 py-2 font-body text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
                 tab === i
                   ? "bg-primary text-white"
                   : "border border-primary/40 text-primary hover:bg-primary/5"
@@ -29,43 +31,58 @@ export function Programacao() {
           ))}
         </div>
 
+        {/* Timeline */}
         <motion.div
           key={dia.dia}
           variants={stagger(0.08)}
           initial="hidden"
           animate="visible"
-          className="relative mt-14 pl-6 md:pl-32"
+          className="mt-14"
         >
-          <div className="absolute bottom-0 left-[88px] top-2 hidden w-[2px] bg-border md:block" />
-          <div className="absolute bottom-0 left-[10px] top-2 w-[2px] bg-border md:hidden" />
-
           {dia.itens.map((it) => {
             const isBreak = it.tipo === "break";
             return (
               <motion.div
                 key={it.hora + it.titulo}
                 variants={slideInRight}
-                className="relative mb-5 flex items-start gap-4 md:gap-8"
+                className="mb-4 flex items-start gap-0"
               >
-                <div className="hidden w-[80px] -ml-32 shrink-0 pt-3 text-right font-display text-base font-bold text-primary md:block">
+                {/* Coluna do horário — largura fixa */}
+                <div className="hidden w-[72px] shrink-0 pt-[15px] text-right font-display text-[14px] font-bold text-primary md:block">
                   {it.hora}
                 </div>
-                <div className="absolute left-0 top-4 z-10 h-3 w-3 -translate-x-[5px] rounded-full bg-gold ring-2 ring-background md:left-[88px] md:-translate-x-[5px]" />
+
+                {/* Coluna da linha + dot — largura fixa, sem overlap */}
+                <div className="hidden md:flex md:w-[40px] md:shrink-0 md:flex-col md:items-center md:pt-[14px]">
+                  {/* Dot */}
+                  <div className="h-3 w-3 rounded-full bg-gold ring-2 ring-background" />
+                  {/* Linha vertical abaixo do dot */}
+                  <div className="mt-1 w-[2px] flex-1 bg-border" style={{ minHeight: 32 }} />
+                </div>
+
+                {/* Dot mobile */}
+                <div className="flex w-[28px] shrink-0 flex-col items-center pt-[14px] md:hidden">
+                  <div className="h-3 w-3 rounded-full bg-gold ring-2 ring-background" />
+                  <div className="mt-1 w-[2px] flex-1 bg-border" style={{ minHeight: 32 }} />
+                </div>
+
+                {/* Card */}
                 <div
-                  className={`ml-6 flex-1 rounded-lg border px-5 py-4 md:ml-0 ${
+                  className={`mb-1 flex-1 rounded-lg border px-4 py-3 ${
                     isBreak
                       ? "border-dashed border-border bg-background italic text-muted-foreground"
                       : "border-border bg-surface"
                   }`}
                 >
-                  <div className="font-body text-xs font-semibold text-primary md:hidden">
+                  {/* Horário mobile — dentro do card */}
+                  <div className="mb-0.5 font-body text-[11px] font-semibold text-primary md:hidden">
                     {it.hora}
                   </div>
-                  <h4 className="font-body text-[15px] font-semibold text-foreground">
+                  <h4 className="font-body text-[14px] font-semibold leading-snug text-foreground">
                     {it.titulo}
                   </h4>
                   {it.speaker && (
-                    <p className="mt-0.5 font-body text-[13px] text-primary">{it.speaker}</p>
+                    <p className="mt-0.5 font-body text-[12px] text-primary">{it.speaker}</p>
                   )}
                 </div>
               </motion.div>

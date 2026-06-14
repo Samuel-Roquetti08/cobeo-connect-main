@@ -9,7 +9,7 @@ import {
   PieChart, Pie, Cell, Legend,
 } from "recharts";
 import {
-  inscritos, trabalhos, inscricoesPorDia, distribuicaoCupons, COUPON_COLORS,
+  inscritos, trabalhos, inscricoesPorDia, distribuicaoCupons, COUPON_COLORS, INGRESSO_LABELS,
 } from "@/data/mockAdmin";
 
 export const Route = createFileRoute("/admin/dashboard")({
@@ -31,6 +31,17 @@ const KPIS = [
 function Dashboard() {
   const pieData = Object.entries(distribuicaoCupons).map(([k, v]) => ({ name: k, value: v }));
   const totalRegistrants = pieData.reduce((s, x) => s + x.value, 0);
+
+  // Distribuição por tipo de ingresso
+  const ingressoData = (["palestra", "dia", "completo"] as const).map((tipo) => ({
+    name: INGRESSO_LABELS[tipo],
+    value: inscritos.filter((i) => i.tipoIngresso === tipo).length,
+  }));
+  const INGRESSO_COLORS: Record<string, string> = {
+    "Palestra Avulsa": "#b5736f",
+    "1 Dia do Congresso": "#C9A84C",
+    "3 Dias Completos": "#731111",
+  };
 
   const ultimasInscricoes = [...inscritos]
     .sort((a, b) => +new Date(b.dataInscricao) - +new Date(a.dataInscricao))
@@ -100,9 +111,10 @@ function Dashboard() {
         </div>
 
         <div className="rounded-xl border border-[#d9d9d9] bg-white p-6 lg:col-span-2">
-          <h2 className="mb-4 text-[15px] font-semibold text-[#1a1a1a]">
+          <h2 className="mb-1 text-[15px] font-semibold text-[#1a1a1a]">
             Distribuição por Categoria de Cupom
           </h2>
+          <p className="mb-4 text-[11px] text-[#6b6b6b]">e por tipo de ingresso</p>
           <div className="relative h-64">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>

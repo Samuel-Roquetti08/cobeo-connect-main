@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ChangeEvent, type DragEvent } from "react";
+import { useMemo, useState, type ChangeEvent, type DragEvent } from "react";
 import { motion, AnimatePresence, type Variants } from "framer-motion";
 import {
   Check, X, Loader2, CreditCard, QrCode, Banknote,
@@ -18,12 +18,12 @@ import {
 type Method = "pix" | "debito" | "credito";
 type TabKey = "evento" | "trabalho";
 
-// Cupons mock — em produção isso NUNCA fica no frontend
-// será substituído por chamada à Server Function
 const COUPONS: Record<string, { tipo: "fixo" | "percentual"; valor: number }> = {
   COBEO10: { tipo: "percentual", valor: 10 },
   ALUNO20: { tipo: "percentual", valor: 20 },
 };
+
+const DESCONTO_COMBO = 70;
 
 const fade: Variants = {
   hidden: { opacity: 0, y: 12 },
@@ -31,11 +31,74 @@ const fade: Variants = {
   exit: { opacity: 0, y: -8, transition: { duration: 0.2 } },
 };
 
+const INITIAL_DADOS: DadosFormState = {
+  nome: "", email: "", telefone: "", whatsapp: "", sameWhats: false,
+};
+
 /* ============================================================
-   INSCRICOES — componente raiz
+   SHARED STATE — elevado para o componente raiz
+   Persiste quando o usuário troca de aba
    ============================================================ */
 export function Inscricoes() {
   const [tab, setTab] = useState<TabKey>("evento");
+
+  // ── Dados pessoais — compartilhados entre as duas abas ──
+  const [dados, setDados] = useState<DadosFormState>(INITIAL_DADOS);
+  const [errors, setErrors] = useState<DadosFormErrors>(EMPTY_ERRORS);
+
+  // ── Estado do FlowEvento ──
+  const [stepEvento, setStepEvento] = useState(0);
+  const [ingressoId, setIngressoId] = useState<IngressoId>("completo");
+  const [palestraSelecionada, setPalestraSelecionada] = useState("");
+  const [diaSelecionado, setDiaSelecionado] = useState("");
+  const [coupon, setCoupon] = useState({
+    code: "",
+    state: "idle" as "idle" | "loading" | "valid" | "invalid",
+    discount: 0,
+    label: "",
+  });
+  const [methodEvento, setMethodEvento] = useState<Method>("pix");
+  const [showCombineBanner, setShowCombineBanner] = useState(true);
+  const [comboAtivo, setComboAtivo] = useState(false);
+
+  // ── Estado do FlowTrabalho ──
+  const [stepTrabalho, setStepTrabalho] = useState(0);
+  const [coauthors, setCoauthors] = useState<string[]>([]);
+  const [work, setWork] = useState({ titulo: "", resumo: "", categoria: "" });
+  const [file, setFile] = useState<File | null>(null);
+  const [methodTrabalho, setMethodTrabalho] = useState<Method>("pix");
+
+  // ── Cálculos derivados ──
+  const ingressoSelecionado = ingressos.find((i) => i.id === ingressoId) ?? ingressos[2];
+  const valorBase = ingressoSelecionado.valor;
+  const totalEvento = useMemo(
+    () => Math.max(0, valorBase - coupon.discount - (comboAtivo ? DESCONTO_COMBO : 0)),
+    [valorBase, coupon.discount, comboAtivo],
+  );
+
+  function handleSwitchToTrabalho() {
+    setComboAtivo(true);
+    setShowCombineBanner(false);
+    setTab("trabalho");
+  }
+
+  function resetAll() {
+    setDados(INITIAL_DADOS);
+    setErrors(EMPTY_ERRORS);
+    setStepEvento(0);
+    setIngressoId("completo");
+    setPalestraSelecionada("");
+    setDiaSelecionado("");
+    setCoupon({ code: "", state: "idle", discount: 0, label: "" });
+    setMethodEvento("pix");
+    setShowCombineBanner(true);
+    setComboAtivo(false);
+    setStepTrabalho(0);
+    setCoauthors([]);
+    setWork({ titulo: "", resumo: "", categoria: "" });
+    setFile(null);
+    setMethodTrabalho("pix");
+  }
 
   return (
     <section id="inscricoes" className="bg-surface py-16 md:py-[120px]">
@@ -79,7 +142,35 @@ export function Inscricoes() {
                 animate="visible"
                 exit="exit"
               >
-                <FlowEvento onSwitchToTrabalho={() => setTab("trabalho")} />
+                <FlowEvento
+                  // Dados compartilhados
+                  dados={dados}
+                  setDados={setDados}
+                  errors={errors}
+                  setErrors={setErrors}
+                  // Estado do flow
+                  step={stepEvento}
+                  setStep={setStepEvento}
+                  ingressoId={ingressoId}
+                  setIngressoId={setIngressoId}
+                  palestraSelecionada={palestraSelecionada}
+                  setPalestraSelecionada={setPalestraSelecionada}
+                  diaSelecionado={diaSelecionado}
+                  setDiaSelecionado={setDiaSelecionado}
+                  coupon={coupon}
+                  setCoupon={setCoupon}
+                  method={methodEvento}
+                  setMethod={setMethodEvento}
+                  showCombineBanner={showCombineBanner}
+                  setShowCombineBanner={setShowCombineBanner}
+                  comboAtivo={comboAtivo}
+                  setComboAtivo={setComboAtivo}
+                  ingressoSelecionado={ingressoSelecionado}
+                  valorBase={valorBase}
+                  total={totalEvento}
+                  onSwitchToTrabalho={handleSwitchToTrabalho}
+                  onReset={resetAll}
+                />
               </motion.div>
             ) : (
               <motion.div
@@ -92,7 +183,25 @@ export function Inscricoes() {
                 animate="visible"
                 exit="exit"
               >
-                <FlowTrabalho />
+                <FlowTrabalho
+                  // Dados compartilhados
+                  dados={dados}
+                  setDados={setDados}
+                  errors={errors}
+                  setErrors={setErrors}
+                  // Estado do flow
+                  step={stepTrabalho}
+                  setStep={setStepTrabalho}
+                  coauthors={coauthors}
+                  setCoauthors={setCoauthors}
+                  work={work}
+                  setWork={setWork}
+                  file={file}
+                  setFile={setFile}
+                  method={methodTrabalho}
+                  setMethod={setMethodTrabalho}
+                  onReset={resetAll}
+                />
               </motion.div>
             )}
           </AnimatePresence>
@@ -102,14 +211,12 @@ export function Inscricoes() {
   );
 }
 
+/* ── TabButton ────────────────────────────────────────────────────────────── */
 function TabButton({
   id, controls, active, onClick, children,
 }: {
-  id: string;
-  controls: string;
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
+  id: string; controls: string; active: boolean;
+  onClick: () => void; children: React.ReactNode;
 }) {
   return (
     <button
@@ -129,9 +236,7 @@ function TabButton({
   );
 }
 
-/* ============================================================
-   STEPPER
-   ============================================================ */
+/* ── Stepper ──────────────────────────────────────────────────────────────── */
 function Stepper({ steps, current }: { steps: string[]; current: number }) {
   return (
     <nav aria-label="Etapas do formulário" className="mb-10 flex items-center justify-between gap-2">
@@ -144,11 +249,7 @@ function Stepper({ steps, current }: { steps: string[]; current: number }) {
               <div
                 aria-current={active ? "step" : undefined}
                 className={`flex h-9 w-9 items-center justify-center rounded-full font-body text-sm font-semibold transition-colors ${
-                  done
-                    ? "bg-gold text-primary"
-                    : active
-                    ? "bg-primary text-white"
-                    : "bg-border text-muted-foreground"
+                  done ? "bg-gold text-primary" : active ? "bg-primary text-white" : "bg-border text-muted-foreground"
                 }`}
               >
                 {done ? <Check className="h-4 w-4" aria-hidden="true" /> : i + 1}
@@ -168,39 +269,44 @@ function Stepper({ steps, current }: { steps: string[]; current: number }) {
 }
 
 /* ============================================================
-   FLOW: EVENTO
+   FLOW: EVENTO — recebe todos os estados via props
    ============================================================ */
-const INITIAL_DADOS: DadosFormState = {
-  nome: "", email: "", telefone: "", whatsapp: "", sameWhats: true,
-};
+interface FlowEventoProps {
+  dados: DadosFormState; setDados: (v: DadosFormState) => void;
+  errors: DadosFormErrors; setErrors: (v: DadosFormErrors) => void;
+  step: number; setStep: (v: number) => void;
+  ingressoId: IngressoId; setIngressoId: (v: IngressoId) => void;
+  palestraSelecionada: string; setPalestraSelecionada: (v: string) => void;
+  diaSelecionado: string; setDiaSelecionado: (v: string) => void;
+  coupon: { code: string; state: "idle"|"loading"|"valid"|"invalid"; discount: number; label: string };
+  setCoupon: (v: any) => void;
+  method: Method; setMethod: (v: Method) => void;
+  showCombineBanner: boolean; setShowCombineBanner: (v: boolean) => void;
+  comboAtivo: boolean; setComboAtivo: (v: boolean) => void;
+  ingressoSelecionado: typeof ingressos[number];
+  valorBase: number;
+  total: number;
+  onSwitchToTrabalho: () => void;
+  onReset: () => void;
+}
 
-function FlowEvento({ onSwitchToTrabalho }: { onSwitchToTrabalho: () => void }) {
-  const [step, setStep] = useState(0);
-  const [ingressoId, setIngressoId] = useState<IngressoId>("completo");
-  const [palestraSelecionada, setPalestraSelecionada] = useState("");
-  const [diaSelecionado, setDiaSelecionado] = useState("");
-  const [data, setData] = useState<DadosFormState>(INITIAL_DADOS);
-  const [errors, setErrors] = useState<DadosFormErrors>(EMPTY_ERRORS);
-  const [coupon, setCoupon] = useState({
-    code: "",
-    state: "idle" as "idle" | "loading" | "valid" | "invalid",
-    discount: 0,
-    label: "",
-  });
-  const [method, setMethod] = useState<Method>("pix");
-  const [showCombineBanner, setShowCombineBanner] = useState(true);
-
-  const ingressoSelecionado = ingressos.find((i) => i.id === ingressoId) ?? ingressos[2];
-  const valorBase = ingressoSelecionado.valor;
-
-  const total = useMemo(
-    () => Math.max(0, valorBase - coupon.discount),
-    [valorBase, coupon.discount],
-  );
+function FlowEvento({
+  dados, setDados, errors, setErrors,
+  step, setStep,
+  ingressoId, setIngressoId,
+  palestraSelecionada, setPalestraSelecionada,
+  diaSelecionado, setDiaSelecionado,
+  coupon, setCoupon,
+  method, setMethod,
+  showCombineBanner, setShowCombineBanner,
+  comboAtivo, setComboAtivo,
+  ingressoSelecionado, valorBase, total,
+  onSwitchToTrabalho, onReset,
+}: FlowEventoProps) {
 
   function applyCoupon() {
     if (!coupon.code) return;
-    setCoupon((c) => ({ ...c, state: "loading" }));
+    setCoupon((c: any) => ({ ...c, state: "loading" }));
     setTimeout(() => {
       const found = COUPONS[coupon.code.toUpperCase()];
       if (found) {
@@ -212,9 +318,9 @@ function FlowEvento({ onSwitchToTrabalho }: { onSwitchToTrabalho: () => void }) 
           found.tipo === "percentual"
             ? `${found.valor}% de desconto`
             : `R$ ${found.valor.toFixed(2).replace(".", ",")} de desconto`;
-        setCoupon((c) => ({ ...c, state: "valid", discount, label }));
+        setCoupon((c: any) => ({ ...c, state: "valid", discount, label }));
       } else {
-        setCoupon((c) => ({ ...c, state: "invalid", discount: 0, label: "" }));
+        setCoupon((c: any) => ({ ...c, state: "invalid", discount: 0, label: "" }));
       }
     }, 900);
   }
@@ -228,7 +334,7 @@ function FlowEvento({ onSwitchToTrabalho }: { onSwitchToTrabalho: () => void }) 
       alert("Por favor, selecione o dia antes de continuar.");
       return;
     }
-    const validated = validateDados(data);
+    const validated = validateDados(dados);
     setErrors(validated);
     if (isDadosValid(validated)) setStep(1);
   }
@@ -243,6 +349,7 @@ function FlowEvento({ onSwitchToTrabalho }: { onSwitchToTrabalho: () => void }) 
           <motion.div key="s1" variants={fade} initial="hidden" animate="visible" exit="exit">
             <div className="grid gap-8 md:grid-cols-[1fr_300px]">
               <div className="space-y-6">
+
                 {/* Seletor de ingresso */}
                 <div role="group" aria-labelledby="ingresso-label">
                   <p id="ingresso-label" className="mb-3 font-body text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -256,7 +363,7 @@ function FlowEvento({ onSwitchToTrabalho }: { onSwitchToTrabalho: () => void }) 
                         role="radio"
                         aria-checked={ingressoId === ing.id}
                         onClick={() => {
-                          setIngressoId(ing.id as IngressoId);
+                          setIngressoId(ing.id);
                           setCoupon({ code: "", state: "idle", discount: 0, label: "" });
                           setPalestraSelecionada("");
                           setDiaSelecionado("");
@@ -290,10 +397,7 @@ function FlowEvento({ onSwitchToTrabalho }: { onSwitchToTrabalho: () => void }) 
                 {/* Seletor condicional — Palestra avulsa */}
                 {ingressoId === "palestra" && (
                   <div>
-                    <label
-                      htmlFor="select-palestra"
-                      className="mb-1 block font-body text-xs font-semibold text-foreground"
-                    >
+                    <label htmlFor="select-palestra" className="mb-1 block font-body text-xs font-semibold text-foreground">
                       Escolha a palestra
                       <span className="ml-0.5 text-destructive" aria-hidden="true">*</span>
                     </label>
@@ -306,8 +410,7 @@ function FlowEvento({ onSwitchToTrabalho }: { onSwitchToTrabalho: () => void }) 
                       <option value="">Selecione uma palestra...</option>
                       {palestrasAvulsas.map((p) => (
                         <option key={p.id} value={p.id}>
-                          {p.dia} · {p.hora} — {p.titulo}
-                          {p.speaker ? ` (${p.speaker})` : ""}
+                          {p.dia} · {p.hora} — {p.titulo}{p.speaker ? ` (${p.speaker})` : ""}
                         </option>
                       ))}
                     </select>
@@ -322,10 +425,7 @@ function FlowEvento({ onSwitchToTrabalho }: { onSwitchToTrabalho: () => void }) 
                 {/* Seletor condicional — 1 Dia */}
                 {ingressoId === "dia" && (
                   <div>
-                    <label
-                      htmlFor="select-dia"
-                      className="mb-1 block font-body text-xs font-semibold text-foreground"
-                    >
+                    <label htmlFor="select-dia" className="mb-1 block font-body text-xs font-semibold text-foreground">
                       Escolha o dia
                       <span className="ml-0.5 text-destructive" aria-hidden="true">*</span>
                     </label>
@@ -353,26 +453,22 @@ function FlowEvento({ onSwitchToTrabalho }: { onSwitchToTrabalho: () => void }) 
                   </div>
                 )}
 
-                <DadosForm
-                  value={data}
-                  onChange={setData}
-                  errors={errors}
-                  onErrors={setErrors}
-                />
+                <DadosForm value={dados} onChange={setDados} errors={errors} onErrors={setErrors} />
+
                 <CouponField
                   state={coupon.state}
                   value={coupon.code}
-                  onChange={(v) =>
-                    setCoupon((c) => ({ ...c, code: v, state: "idle", discount: 0, label: "" }))
-                  }
+                  onChange={(v) => setCoupon((c: any) => ({ ...c, code: v, state: "idle", discount: 0, label: "" }))}
                   onApply={applyCoupon}
                   label={coupon.label}
                 />
               </div>
+
               <OrderSummary
                 lines={[{ label: ingressoSelecionado.label, value: valorBase }]}
                 discount={coupon.state === "valid" ? coupon.discount : 0}
                 discountLabel={coupon.label}
+                comboDiscount={comboAtivo ? DESCONTO_COMBO : 0}
                 total={total}
               />
             </div>
@@ -390,16 +486,17 @@ function FlowEvento({ onSwitchToTrabalho }: { onSwitchToTrabalho: () => void }) 
                 >
                   <Info className="h-5 w-5 shrink-0 text-gold" aria-hidden="true" />
                   <p className="flex-1 font-body text-sm text-foreground">
-                    Deseja também submeter um trabalho acadêmico?
+                    Deseja também submeter um trabalho acadêmico?{" "}
+                    <span className="font-semibold text-primary">Desconto de R$ 70,00 no total.</span>
                   </p>
                   <button
                     onClick={onSwitchToTrabalho}
                     className="rounded-md border border-primary px-3 py-1.5 font-body text-xs font-semibold text-primary hover:bg-primary hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                   >
-                    Sim, adicionar submissão
+                    Sim, adicionar submissão (-R$ 70,00)
                   </button>
                   <button
-                    onClick={() => setShowCombineBanner(false)}
+                    onClick={() => { setComboAtivo(false); setShowCombineBanner(false); }}
                     aria-label="Fechar sugestão"
                     className="font-body text-xs font-semibold text-muted-foreground hover:text-foreground"
                   >
@@ -432,12 +529,7 @@ function FlowEvento({ onSwitchToTrabalho }: { onSwitchToTrabalho: () => void }) 
         {/* STEP 3 — Confirmação */}
         {step === 2 && (
           <motion.div key="s3" variants={fade} initial="hidden" animate="visible" exit="exit">
-            <Confirmacao email={data.email} onReset={() => {
-              setStep(0);
-              setData(INITIAL_DADOS);
-              setErrors(EMPTY_ERRORS);
-              setCoupon({ code: "", state: "idle", discount: 0, label: "" });
-            }} />
+            <Confirmacao email={dados.email} onReset={onReset} />
           </motion.div>
         )}
       </AnimatePresence>
@@ -446,50 +538,55 @@ function FlowEvento({ onSwitchToTrabalho }: { onSwitchToTrabalho: () => void }) 
 }
 
 /* ============================================================
-   FLOW: TRABALHO
+   FLOW: TRABALHO — recebe dados compartilhados via props
    ============================================================ */
-function FlowTrabalho() {
-  const [step, setStep] = useState(0);
-  const [data, setData] = useState<DadosFormState>(INITIAL_DADOS);
-  const [errors, setErrors] = useState<DadosFormErrors>(EMPTY_ERRORS);
-  const [coauthors, setCoauthors] = useState<string[]>([]);
-  const [work, setWork] = useState({ titulo: "", resumo: "", categoria: "" });
-  const [file, setFile] = useState<File | null>(null);
-  const [method, setMethod] = useState<Method>("pix");
+interface FlowTrabalhoProps {
+  dados: DadosFormState; setDados: (v: DadosFormState) => void;
+  errors: DadosFormErrors; setErrors: (v: DadosFormErrors) => void;
+  step: number; setStep: (v: number) => void;
+  coauthors: string[]; setCoauthors: (v: string[]) => void;
+  work: { titulo: string; resumo: string; categoria: string };
+  setWork: (v: { titulo: string; resumo: string; categoria: string }) => void;
+  file: File | null; setFile: (v: File | null) => void;
+  method: Method; setMethod: (v: Method) => void;
+  onReset: () => void;
+}
+
+function FlowTrabalho({
+  dados, setDados, errors, setErrors,
+  step, setStep,
+  coauthors, setCoauthors,
+  work, setWork,
+  file, setFile,
+  method, setMethod,
+  onReset,
+}: FlowTrabalhoProps) {
 
   function handleContinuarDados() {
-    const validated = validateDados(data);
+    const validated = validateDados(dados);
     setErrors(validated);
     if (isDadosValid(validated)) setStep(1);
   }
 
+  const precoTrabalho = 90;
+
   return (
     <div>
-      <Stepper
-        steps={["Dados", "Trabalho", "Pagamento", "Confirmação"]}
-        current={step}
-      />
+      <Stepper steps={["Dados", "Trabalho", "Pagamento", "Confirmação"]} current={step} />
 
       <AnimatePresence mode="wait">
         {/* STEP 1 — Dados */}
         {step === 0 && (
           <motion.div key="t1" variants={fade} initial="hidden" animate="visible" exit="exit" className="space-y-6">
-            <DadosForm
-              value={data}
-              onChange={setData}
-              errors={errors}
-              onErrors={setErrors}
-            />
+            <DadosForm value={dados} onChange={setDados} errors={errors} onErrors={setErrors} />
 
             {/* Coautores */}
             <div>
               <div className="mb-3 flex items-center justify-between">
-                <h3 className="font-display text-base font-bold text-foreground">
-                  Coautores
-                </h3>
+                <h3 className="font-display text-base font-bold text-foreground">Coautores</h3>
                 <button
                   type="button"
-                  onClick={() => setCoauthors((c) => [...c, ""])}
+                  onClick={() => setCoauthors([...coauthors, ""])}
                   className="inline-flex items-center gap-1.5 rounded-md border border-primary px-3 py-1.5 font-body text-xs font-semibold text-primary hover:bg-primary hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 >
                   <Plus className="h-3.5 w-3.5" aria-hidden="true" /> Adicionar
@@ -504,9 +601,7 @@ function FlowTrabalho() {
                     exit={{ opacity: 0, y: -8, height: 0 }}
                     className="mb-2 flex items-center gap-2"
                   >
-                    <label htmlFor={`coautor-${i}`} className="sr-only">
-                      Coautor {i + 1}
-                    </label>
+                    <label htmlFor={`coautor-${i}`} className="sr-only">Coautor {i + 1}</label>
                     <input
                       id={`coautor-${i}`}
                       value={c}
@@ -522,23 +617,19 @@ function FlowTrabalho() {
                       type="button"
                       onClick={() => setCoauthors(coauthors.filter((_, k) => k !== i))}
                       aria-label={`Remover coautor ${i + 1}`}
-                      className="text-muted-foreground hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive"
+                      className="text-muted-foreground hover:text-destructive focus-visible:outline-none"
                     >
-                      <X className="h-4 w-4" aria-hidden="true" />
+                      <X className="h-4 w-4" />
                     </button>
                   </motion.div>
                 ))}
               </AnimatePresence>
               {coauthors.length === 0 && (
-                <p className="font-body text-xs text-muted-foreground">
-                  Nenhum coautor adicionado.
-                </p>
+                <p className="font-body text-xs text-muted-foreground">Nenhum coautor adicionado.</p>
               )}
             </div>
 
-            <PrimaryButton disabled={false} onClick={handleContinuarDados}>
-              Continuar
-            </PrimaryButton>
+            <PrimaryButton onClick={handleContinuarDados}>Continuar</PrimaryButton>
           </motion.div>
         )}
 
@@ -582,16 +673,10 @@ function FlowTrabalho() {
             <FileUpload file={file} onChange={setFile} />
 
             <Accordion title="Instruções para Formatação">
-              <p>
-                Lorem ipsum — instruções a definir pelo cliente. Formato A4, fonte Arial 12,
-                espaçamento 1.5, máximo 8 páginas. Inclua referências em ABNT.
-              </p>
+              <p>Lorem ipsum — instruções a definir pelo cliente. Formato A4, fonte Arial 12, espaçamento 1.5, máximo 8 páginas.</p>
             </Accordion>
 
-            <PrimaryButton
-              disabled={!work.titulo || !work.categoria}
-              onClick={() => setStep(2)}
-            >
+            <PrimaryButton disabled={!work.titulo || !work.categoria} onClick={() => setStep(2)}>
               Continuar para Pagamento
             </PrimaryButton>
           </motion.div>
@@ -609,7 +694,7 @@ function FlowTrabalho() {
             <PaymentStep
               method={method}
               setMethod={setMethod}
-              total={precos.trabalho}
+              total={precoTrabalho}
               labelLinha="Submissão de Trabalho"
               onBack={() => setStep(1)}
               onConfirm={() => setStep(3)}
@@ -620,17 +705,7 @@ function FlowTrabalho() {
         {/* STEP 4 — Confirmação */}
         {step === 3 && (
           <motion.div key="t4" variants={fade} initial="hidden" animate="visible" exit="exit">
-            <Confirmacao
-              email={data.email}
-              onReset={() => {
-                setStep(0);
-                setData(INITIAL_DADOS);
-                setErrors(EMPTY_ERRORS);
-                setCoauthors([]);
-                setWork({ titulo: "", resumo: "", categoria: "" });
-                setFile(null);
-              }}
-            />
+            <Confirmacao email={dados.email} onReset={onReset} />
           </motion.div>
         )}
       </AnimatePresence>
@@ -642,13 +717,8 @@ function FlowTrabalho() {
    SUB-COMPONENTES
    ============================================================ */
 
-function Field({
-  label, htmlFor, children, required = false,
-}: {
-  label: string;
-  htmlFor: string;
-  children: React.ReactNode;
-  required?: boolean;
+function Field({ label, htmlFor, children, required = false }: {
+  label: string; htmlFor: string; children: React.ReactNode; required?: boolean;
 }) {
   return (
     <div>
@@ -661,14 +731,10 @@ function Field({
   );
 }
 
-function CouponField({
-  state, value, onChange, onApply, label,
-}: {
-  state: "idle" | "loading" | "valid" | "invalid";
-  value: string;
-  onChange: (v: string) => void;
-  onApply: () => void;
-  label: string;
+function CouponField({ state, value, onChange, onApply, label }: {
+  state: "idle"|"loading"|"valid"|"invalid";
+  value: string; onChange: (v: string) => void;
+  onApply: () => void; label: string;
 }) {
   return (
     <div role="group" aria-labelledby="cupom-label">
@@ -681,7 +747,6 @@ function CouponField({
           onChange={(e) => onChange(e.target.value.toUpperCase())}
           onKeyDown={(e) => e.key === "Enter" && onApply()}
           placeholder="Digite seu cupom"
-          aria-describedby={state === "valid" ? "cupom-ok" : state === "invalid" ? "cupom-err" : undefined}
           className="flex-1 rounded-md border border-input bg-surface px-3 py-2 font-body text-sm font-mono uppercase tracking-wider outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
         />
         <button
@@ -690,53 +755,48 @@ function CouponField({
           disabled={state === "loading" || !value}
           className="rounded-md bg-primary px-5 font-body text-sm font-semibold text-white transition-colors hover:bg-[#8B1515] disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         >
-          {state === "loading" ? (
-            <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-          ) : "Aplicar"}
+          {state === "loading" ? <Loader2 className="h-4 w-4 animate-spin" /> : "Aplicar"}
         </button>
       </div>
-
       {state === "valid" && (
-        <p id="cupom-ok" role="status" className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-green-100 px-2 py-0.5 font-body text-xs font-semibold text-green-700">
-          <Check className="h-3.5 w-3.5" aria-hidden="true" /> {label}
+        <p role="status" className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-green-100 px-2 py-0.5 font-body text-xs font-semibold text-green-700">
+          <Check className="h-3.5 w-3.5" /> {label}
         </p>
       )}
       {state === "invalid" && (
-        <p id="cupom-err" role="alert" className="mt-2 inline-flex items-center gap-1.5 font-body text-xs font-semibold text-destructive">
-          <X className="h-3.5 w-3.5" aria-hidden="true" /> Cupom inválido ou já utilizado
+        <p role="alert" className="mt-2 inline-flex items-center gap-1.5 font-body text-xs font-semibold text-destructive">
+          <X className="h-3.5 w-3.5" /> Cupom inválido ou já utilizado
         </p>
       )}
     </div>
   );
 }
 
-function OrderSummary({
-  lines, discount, discountLabel, total,
-}: {
+function OrderSummary({ lines, discount, discountLabel, comboDiscount = 0, total }: {
   lines: { label: string; value: number }[];
-  discount: number;
-  discountLabel: string;
-  total: number;
+  discount: number; discountLabel: string;
+  comboDiscount?: number; total: number;
 }) {
   return (
-    <aside
-      aria-label="Resumo do pedido"
-      className="self-start rounded-xl border border-border bg-background p-6 md:sticky md:top-24"
-    >
+    <aside aria-label="Resumo do pedido" className="self-start rounded-xl border border-border bg-background p-6 md:sticky md:top-24">
       <h3 className="font-display text-lg font-bold text-foreground">Resumo do Pedido</h3>
       <ul className="mt-4 space-y-2 font-body text-sm text-muted-foreground">
         {lines.map((l) => (
           <li key={l.label} className="flex items-baseline justify-between gap-2">
             <span>{l.label}</span>
-            <span className="text-foreground">
-              R$ {l.value.toFixed(2).replace(".", ",")}
-            </span>
+            <span className="text-foreground">R$ {l.value.toFixed(2).replace(".", ",")}</span>
           </li>
         ))}
         {discount > 0 && (
           <li className="flex items-baseline justify-between gap-2 text-green-700">
             <span>{discountLabel}</span>
             <span>- R$ {discount.toFixed(2).replace(".", ",")}</span>
+          </li>
+        )}
+        {comboDiscount > 0 && (
+          <li className="flex items-baseline justify-between gap-2 text-green-700">
+            <span>Desconto combo (evento + trabalho)</span>
+            <span>- R$ {comboDiscount.toFixed(2).replace(".", ",")}</span>
           </li>
         )}
       </ul>
@@ -754,13 +814,9 @@ function OrderSummary({
   );
 }
 
-function PrimaryButton({
-  children, onClick, disabled, className = "",
-}: {
-  children: React.ReactNode;
-  onClick: () => void;
-  disabled?: boolean;
-  className?: string;
+function PrimaryButton({ children, onClick, disabled, className = "" }: {
+  children: React.ReactNode; onClick: () => void;
+  disabled?: boolean; className?: string;
 }) {
   return (
     <button
@@ -774,45 +830,20 @@ function PrimaryButton({
   );
 }
 
-/* ============================================================
-   PAGAMENTO
-   ============================================================ */
-function PaymentStep({
-  method, setMethod, total, labelLinha = "Inscrição no Evento", onBack, onConfirm,
-}: {
-  method: Method;
-  setMethod: (m: Method) => void;
-  total: number;
-  labelLinha?: string;
-  onBack: () => void;
-  onConfirm: () => void;
+/* ── PaymentStep ────────────────────────────────────────────────────────────── */
+function PaymentStep({ method, setMethod, total, labelLinha = "Inscrição no Evento", onBack, onConfirm }: {
+  method: Method; setMethod: (m: Method) => void;
+  total: number; labelLinha?: string;
+  onBack: () => void; onConfirm: () => void;
 }) {
   return (
     <div>
       <fieldset className="mb-6">
         <legend className="sr-only">Método de pagamento</legend>
         <div className="grid gap-3 sm:grid-cols-3">
-          <PayCard
-            active={method === "pix"}
-            onClick={() => setMethod("pix")}
-            icon={<QrCode />}
-            title="PIX"
-            sub="Aprovação imediata"
-          />
-          <PayCard
-            active={method === "debito"}
-            onClick={() => setMethod("debito")}
-            icon={<Banknote />}
-            title="Débito"
-            sub="Aprovação imediata"
-          />
-          <PayCard
-            active={method === "credito"}
-            onClick={() => setMethod("credito")}
-            icon={<CreditCard />}
-            title="Crédito"
-            sub="Parcelamento disponível"
-          />
+          <PayCard active={method === "pix"} onClick={() => setMethod("pix")} icon={<QrCode />} title="PIX" sub="Aprovação imediata" />
+          <PayCard active={method === "debito"} onClick={() => setMethod("debito")} icon={<Banknote />} title="Débito" sub="Aprovação imediata" />
+          <PayCard active={method === "credito"} onClick={() => setMethod("credito")} icon={<CreditCard />} title="Crédito" sub="Parcelamento disponível" />
         </div>
       </fieldset>
 
@@ -855,14 +886,9 @@ function PaymentStep({
   );
 }
 
-function PayCard({
-  active, onClick, icon, title, sub,
-}: {
-  active: boolean;
-  onClick: () => void;
-  icon: React.ReactNode;
-  title: string;
-  sub: string;
+function PayCard({ active, onClick, icon, title, sub }: {
+  active: boolean; onClick: () => void;
+  icon: React.ReactNode; title: string; sub: string;
 }) {
   return (
     <button
@@ -871,9 +897,7 @@ function PayCard({
       aria-checked={active}
       onClick={onClick}
       className={`relative rounded-xl border-2 px-5 py-4 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
-        active
-          ? "border-primary bg-[#fff8f8]"
-          : "border-border bg-surface hover:border-primary/50"
+        active ? "border-primary bg-[#fff8f8]" : "border-border bg-surface hover:border-primary/50"
       }`}
     >
       {active && (
@@ -890,52 +914,30 @@ function PayCard({
 
 function PixPanel() {
   const [secs, setSecs] = useState(899);
-  useEffect(() => {
+  useState(() => {
     const id = setInterval(() => setSecs((s) => (s > 0 ? s - 1 : s)), 1000);
     return () => clearInterval(id);
-  }, []);
-
+  });
   const mm = String(Math.floor(secs / 60)).padStart(2, "0");
   const ss = String(secs % 60).padStart(2, "0");
-  const key = "00020126360014BR.GOV.BCB.PIX0114cobeo@unifafibe5204000053039865802BR";
+  const key = "00020126360014BR.GOV.BCB.PIX0114cobeo@unifafibe";
 
   return (
     <div className="grid items-center gap-6 rounded-xl border border-border bg-background p-6 md:grid-cols-[200px_1fr]">
-      <div
-        className="flex h-[200px] w-[200px] items-center justify-center rounded-lg bg-white shadow-inner"
-        aria-label="QR Code PIX"
-      >
+      <div className="flex h-[200px] w-[200px] items-center justify-center rounded-lg bg-white shadow-inner" aria-label="QR Code PIX">
         <QrCode className="h-24 w-24 text-primary" aria-hidden="true" />
       </div>
       <div>
-        <p className="font-body text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Chave PIX Copia e Cola
-        </p>
+        <p className="font-body text-xs font-semibold uppercase tracking-wider text-muted-foreground">Chave PIX Copia e Cola</p>
         <div className="mt-1 flex items-center gap-2">
-          <input
-            readOnly
-            value={key}
-            aria-label="Chave PIX"
-            className="flex-1 rounded-md border border-input bg-surface px-3 py-2 font-mono text-xs"
-          />
-          <button
-            type="button"
-            onClick={() => navigator.clipboard?.writeText(key)}
-            aria-label="Copiar chave PIX"
-            className="rounded-md bg-primary p-2 text-white hover:bg-[#8B1515] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-          >
-            <Copy className="h-4 w-4" aria-hidden="true" />
+          <input readOnly value={key} aria-label="Chave PIX" className="flex-1 rounded-md border border-input bg-surface px-3 py-2 font-mono text-xs" />
+          <button type="button" onClick={() => navigator.clipboard?.writeText(key)} aria-label="Copiar chave PIX" className="rounded-md bg-primary p-2 text-white hover:bg-[#8B1515] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+            <Copy className="h-4 w-4" />
           </button>
         </div>
         <div className="mt-4 flex items-center justify-between rounded-md bg-[#fff8f8] px-4 py-3">
           <span className="font-body text-sm text-muted-foreground">Expira em</span>
-          <time
-            aria-live="polite"
-            aria-label={`Tempo restante: ${mm} minutos e ${ss} segundos`}
-            className="font-mono text-xl font-bold text-primary"
-          >
-            {mm}:{ss}
-          </time>
+          <time aria-live="polite" className="font-mono text-xl font-bold text-primary">{mm}:{ss}</time>
         </div>
         <p className="mt-3 inline-flex items-center gap-2 font-body text-xs text-muted-foreground">
           <span className="relative flex h-2 w-2" aria-hidden="true">
@@ -951,86 +953,37 @@ function PixPanel() {
 
 function CardPanel() {
   const [card, setCard] = useState({ number: "", name: "", expiry: "", cvv: "" });
-
   function formatExpiry(v: string) {
     const digits = v.replace(/\D/g, "").slice(0, 4);
     return digits.length > 2 ? `${digits.slice(0, 2)}/${digits.slice(2)}` : digits;
   }
-
   const masked = card.number.replace(/\D/g, "").slice(0, 16).replace(/(.{4})/g, "$1 ").trim();
 
   return (
     <div className="grid gap-6 md:grid-cols-[280px_1fr]">
-      {/* Visual do cartão */}
-      <div
-        aria-hidden="true"
-        className="flex h-[160px] w-full max-w-[280px] flex-col justify-between rounded-2xl p-5 text-white shadow-lg"
-        style={{ background: "linear-gradient(135deg, #731111 0%, #4a0a0a 100%)" }}
-      >
+      <div aria-hidden="true" className="flex h-[160px] w-full max-w-[280px] flex-col justify-between rounded-2xl p-5 text-white shadow-lg" style={{ background: "linear-gradient(135deg, #731111 0%, #4a0a0a 100%)" }}>
         <CreditCard className="h-7 w-7 text-[#C9A84C]" />
         <div>
-          <div className="font-mono text-lg tracking-wider">
-            {masked || "0000 0000 0000 0000"}
-          </div>
+          <div className="font-mono text-lg tracking-wider">{masked || "0000 0000 0000 0000"}</div>
           <div className="mt-3 flex justify-between font-mono text-xs uppercase">
             <span>{card.name || "Nome no Cartão"}</span>
             <span>{card.expiry || "MM/AA"}</span>
           </div>
         </div>
       </div>
-
-      {/* Campos do cartão */}
       <div className="space-y-3">
         <Field label="Número do Cartão" htmlFor="card-number">
-          <input
-            id="card-number"
-            type="text"
-            inputMode="numeric"
-            value={masked}
-            onChange={(e) => setCard({ ...card, number: e.target.value })}
-            placeholder="0000 0000 0000 0000"
-            autoComplete="cc-number"
-            maxLength={19}
-            className="w-full rounded-md border border-input bg-surface px-3 py-2 font-mono text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-          />
+          <input id="card-number" type="text" inputMode="numeric" value={masked} onChange={(e: ChangeEvent<HTMLInputElement>) => setCard({ ...card, number: e.target.value })} placeholder="0000 0000 0000 0000" autoComplete="cc-number" maxLength={19} className="w-full rounded-md border border-input bg-surface px-3 py-2 font-mono text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" />
         </Field>
         <Field label="Nome no Cartão" htmlFor="card-name">
-          <input
-            id="card-name"
-            type="text"
-            value={card.name}
-            onChange={(e) => setCard({ ...card, name: e.target.value.toUpperCase() })}
-            placeholder="NOME COMO NO CARTÃO"
-            autoComplete="cc-name"
-            className="w-full rounded-md border border-input bg-surface px-3 py-2 font-body text-sm uppercase outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-          />
+          <input id="card-name" type="text" value={card.name} onChange={(e: ChangeEvent<HTMLInputElement>) => setCard({ ...card, name: e.target.value.toUpperCase() })} placeholder="NOME COMO NO CARTÃO" autoComplete="cc-name" className="w-full rounded-md border border-input bg-surface px-3 py-2 font-body text-sm uppercase outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" />
         </Field>
         <div className="grid grid-cols-2 gap-3">
           <Field label="Validade" htmlFor="card-expiry">
-            <input
-              id="card-expiry"
-              type="text"
-              inputMode="numeric"
-              value={card.expiry}
-              onChange={(e) => setCard({ ...card, expiry: formatExpiry(e.target.value) })}
-              placeholder="MM/AA"
-              autoComplete="cc-exp"
-              maxLength={5}
-              className="w-full rounded-md border border-input bg-surface px-3 py-2 font-mono text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-            />
+            <input id="card-expiry" type="text" inputMode="numeric" value={card.expiry} onChange={(e: ChangeEvent<HTMLInputElement>) => setCard({ ...card, expiry: formatExpiry(e.target.value) })} placeholder="MM/AA" autoComplete="cc-exp" maxLength={5} className="w-full rounded-md border border-input bg-surface px-3 py-2 font-mono text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" />
           </Field>
           <Field label="CVV" htmlFor="card-cvv">
-            <input
-              id="card-cvv"
-              type="text"
-              inputMode="numeric"
-              value={card.cvv}
-              onChange={(e) => setCard({ ...card, cvv: e.target.value.replace(/\D/g, "").slice(0, 4) })}
-              placeholder="•••"
-              autoComplete="cc-csc"
-              maxLength={4}
-              className="w-full rounded-md border border-input bg-surface px-3 py-2 font-mono text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-            />
+            <input id="card-cvv" type="text" inputMode="numeric" value={card.cvv} onChange={(e: ChangeEvent<HTMLInputElement>) => setCard({ ...card, cvv: e.target.value.replace(/\D/g, "").slice(0, 4) })} placeholder="•••" autoComplete="cc-csc" maxLength={4} className="w-full rounded-md border border-input bg-surface px-3 py-2 font-mono text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" />
           </Field>
         </div>
       </div>
@@ -1038,130 +991,68 @@ function CardPanel() {
   );
 }
 
-/* ============================================================
-   CONFIRMAÇÃO
-   ============================================================ */
+/* ── Confirmação ───────────────────────────────────────────────────────────── */
 function Confirmacao({ email, onReset }: { email: string; onReset: () => void }) {
-  const protocolo = useMemo(
-    () => `COBEO-${Math.random().toString(36).slice(2, 8).toUpperCase()}`,
-    [],
-  );
-
+  const protocolo = useMemo(() => `COBEO-${Math.random().toString(36).slice(2, 8).toUpperCase()}`, []);
   return (
     <div className="py-6 text-center" role="status" aria-live="polite">
-      <motion.div
-        initial={{ scale: 0, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ duration: 0.5, ease: "easeOut" }}
-        className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-gold"
-        aria-hidden="true"
-      >
+      <motion.div initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.5 }} className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-gold" aria-hidden="true">
         <Check className="h-10 w-10 text-primary" strokeWidth={3} />
       </motion.div>
-
-      <h2 className="mt-6 font-display text-3xl font-extrabold text-foreground">
-        Inscrição Confirmada!
-      </h2>
+      <h2 className="mt-6 font-display text-3xl font-extrabold text-foreground">Inscrição Confirmada!</h2>
       <p className="mt-2 font-body text-sm text-muted-foreground">
-        Um e-mail de confirmação foi enviado para{" "}
-        <strong className="text-foreground">{email || "seu endereço"}</strong>.
+        Um e-mail de confirmação foi enviado para <strong className="text-foreground">{email || "seu endereço"}</strong>.
       </p>
-
       <div className="mx-auto mt-8 max-w-md rounded-xl border border-border bg-background p-5 text-left">
-        <p className="font-body text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Protocolo de Inscrição
-        </p>
+        <p className="font-body text-xs font-semibold uppercase tracking-wider text-muted-foreground">Protocolo de Inscrição</p>
         <p className="mt-1 font-mono text-base font-bold text-primary">{protocolo}</p>
-        <p className="mt-2 font-body text-[11px] text-muted-foreground">
-          Guarde este código — ele será necessário para retirada do crachá.
-        </p>
+        <p className="mt-2 font-body text-[11px] text-muted-foreground">Guarde este código — ele será necessário para retirada do crachá.</p>
       </div>
-
       <div className="mt-8 flex flex-wrap justify-center gap-3">
-        <button
-          type="button"
-          onClick={onReset}
-          className="rounded-md border border-border px-6 py-3 font-body text-sm font-semibold text-foreground transition-colors hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-        >
+        <button type="button" onClick={onReset} className="rounded-md border border-border px-6 py-3 font-body text-sm font-semibold text-foreground transition-colors hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
           Voltar ao Início
         </button>
-        <a
-          href="#inscricoes"
-          className="rounded-md bg-primary px-6 py-3 font-body text-sm font-semibold text-white transition-colors hover:bg-[#8B1515] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-        >
-          Submeter Trabalho
-        </a>
       </div>
     </div>
   );
 }
 
-/* ============================================================
-   FILE UPLOAD
-   ============================================================ */
+/* ── FileUpload ────────────────────────────────────────────────────────────── */
 function FileUpload({ file, onChange }: { file: File | null; onChange: (f: File | null) => void }) {
   const [over, setOver] = useState(false);
-  const inputId = "file-upload-input";
-
   function onDrop(e: DragEvent<HTMLLabelElement>) {
-    e.preventDefault();
-    setOver(false);
+    e.preventDefault(); setOver(false);
     const f = e.dataTransfer.files?.[0];
     if (f) onChange(f);
   }
-
   function onPick(e: ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
     if (f) onChange(f);
   }
-
   return (
     <div>
       <p className="mb-1 font-body text-xs font-semibold text-foreground">
-        Arquivo do Trabalho
-        <span className="ml-0.5 text-destructive" aria-hidden="true">*</span>
+        Arquivo do Trabalho<span className="ml-0.5 text-destructive" aria-hidden="true">*</span>
       </p>
       <label
-        htmlFor={inputId}
         onDragOver={(e) => { e.preventDefault(); setOver(true); }}
         onDragLeave={() => setOver(false)}
         onDrop={onDrop}
-        className={`flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed px-6 py-10 text-center transition-colors ${
-          over
-            ? "border-primary bg-[#fff8f8]"
-            : "border-border bg-background hover:border-primary/50"
-        }`}
+        className={`flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed px-6 py-10 text-center transition-colors ${over ? "border-primary bg-[#fff8f8]" : "border-border bg-background hover:border-primary/50"}`}
       >
         <Upload className="h-10 w-10 text-secondary" aria-hidden="true" />
-        <p className="font-body text-base font-medium text-foreground">
-          Arraste seu arquivo aqui
-        </p>
+        <p className="font-body text-base font-medium text-foreground">Arraste seu arquivo aqui</p>
         <p className="font-body text-sm text-primary underline">ou clique para selecionar</p>
         <p className="font-body text-xs text-muted-foreground">PDF, DOC, DOCX, PPT, PPTX</p>
-        <input
-          id={inputId}
-          type="file"
-          className="sr-only"
-          onChange={onPick}
-          accept=".pdf,.doc,.docx,.ppt,.pptx"
-          aria-label="Selecionar arquivo do trabalho acadêmico"
-        />
+        <input type="file" className="sr-only" onChange={onPick} accept=".pdf,.doc,.docx,.ppt,.pptx" aria-label="Selecionar arquivo do trabalho acadêmico" />
       </label>
-
       {file && (
         <div className="mt-3 inline-flex items-center gap-3 rounded-md border border-border bg-background px-3 py-2">
           <FileText className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
           <span className="font-body text-sm text-foreground">{file.name}</span>
-          <span className="font-body text-xs text-muted-foreground">
-            {(file.size / 1024).toFixed(0)} KB
-          </span>
-          <button
-            type="button"
-            onClick={() => onChange(null)}
-            aria-label={`Remover arquivo ${file.name}`}
-            className="text-muted-foreground hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive"
-          >
-            <X className="h-4 w-4" aria-hidden="true" />
+          <span className="font-body text-xs text-muted-foreground">{(file.size / 1024).toFixed(0)} KB</span>
+          <button type="button" onClick={() => onChange(null)} aria-label={`Remover arquivo ${file.name}`} className="text-muted-foreground hover:text-destructive focus-visible:outline-none">
+            <X className="h-4 w-4" />
           </button>
         </div>
       )}
@@ -1169,41 +1060,20 @@ function FileUpload({ file, onChange }: { file: File | null; onChange: (f: File 
   );
 }
 
-/* ============================================================
-   ACCORDION
-   ============================================================ */
+/* ── Accordion ─────────────────────────────────────────────────────────────── */
 function Accordion({ title, children }: { title: string; children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const id = `accordion-${title.replace(/\s/g, "-").toLowerCase()}`;
-
   return (
     <div className="rounded-lg border border-border bg-background">
-      <button
-        type="button"
-        onClick={() => setOpen(!open)}
-        aria-expanded={open}
-        aria-controls={id}
-        className="flex w-full items-center justify-between px-4 py-3 text-left font-body text-sm font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-      >
+      <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} aria-controls={id} className="flex w-full items-center justify-between px-4 py-3 text-left font-body text-sm font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
         {title}
-        <ChevronDown
-          className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${open ? "rotate-180" : ""}`}
-          aria-hidden="true"
-        />
+        <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${open ? "rotate-180" : ""}`} aria-hidden="true" />
       </button>
       <AnimatePresence initial={false}>
         {open && (
-          <motion.div
-            id={id}
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.25 }}
-            className="overflow-hidden"
-          >
-            <div className="px-4 pb-4 font-body text-sm text-muted-foreground">
-              {children}
-            </div>
+          <motion.div id={id} initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25 }} className="overflow-hidden">
+            <div className="px-4 pb-4 font-body text-sm text-muted-foreground">{children}</div>
           </motion.div>
         )}
       </AnimatePresence>

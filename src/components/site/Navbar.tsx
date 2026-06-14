@@ -10,18 +10,24 @@ const links = [
   { href: "#contato", label: "Contato" },
 ];
 
+// Altura aproximada do hero (100vh). Após isso o navbar mostra o título.
+const HERO_THRESHOLD = 80;
+
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
+  const [pastHero, setPastHero] = useState(false);
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 16);
+    const onScroll = () => {
+      setScrolled(window.scrollY > 16);
+      setPastHero(window.scrollY > HERO_THRESHOLD);
+    };
     onScroll();
-    window.addEventListener("scroll", onScroll);
+    window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // Impede scroll do body quando menu mobile está aberto
   useEffect(() => {
     document.body.style.overflow = open ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
@@ -35,17 +41,38 @@ export function Navbar() {
       }`}
     >
       <div className="mx-auto flex h-[72px] max-w-7xl items-center justify-between gap-4 px-4 sm:px-6">
-        {/* Logo — link para o topo */}
+
+        {/* Logo + título animado */}
         <a
           href="#top"
-          className="flex items-center gap-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold focus-visible:ring-offset-2 focus-visible:ring-offset-primary"
+          className="flex min-w-0 items-center gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold focus-visible:ring-offset-2 focus-visible:ring-offset-primary"
           aria-label="II COBEO — Voltar ao topo"
         >
-          <OdontoSeal className="h-10" />
-          <UnifafibeLogo className="h-9" />
+          <OdontoSeal className="h-10 shrink-0" />
+          <UnifafibeLogo className="h-9 shrink-0" />
+
+          {/* Título que aparece ao scrollar — transição suave */}
+          <div
+            className={`hidden min-w-0 flex-col overflow-hidden transition-all duration-500 ease-out md:flex ${
+              pastHero
+                ? "max-w-xs opacity-100 translate-x-0"
+                : "max-w-0 opacity-0 -translate-x-4"
+            }`}
+            aria-hidden={!pastHero}
+          >
+            <span
+              className="truncate font-display text-[15px] font-extrabold leading-tight text-white"
+              style={{ letterSpacing: "-0.01em" }}
+            >
+              II COBEO
+            </span>
+            <span className="truncate font-body text-[10px] font-medium text-white/60 uppercase tracking-wider">
+              Congresso de Odontologia de Bebedouro
+            </span>
+          </div>
         </a>
 
-        {/* Nav desktop — sem botão Admin */}
+        {/* Nav desktop */}
         <nav aria-label="Navegação principal" className="hidden items-center gap-7 md:flex">
           {links.map((l) => (
             <a
@@ -70,7 +97,7 @@ export function Navbar() {
         </button>
       </div>
 
-      {/* Menu mobile fullscreen */}
+      {/* Menu mobile */}
       {open && (
         <div
           id="mobile-menu"

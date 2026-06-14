@@ -124,6 +124,7 @@ function InscritosPage() {
                 <th className="px-4 py-3">Telefone</th>
                 <th className="px-4 py-3">WhatsApp</th>
                 <th className="px-4 py-3">Data</th>
+                <th className="px-4 py-3">Ingresso</th>
                 <th className="px-4 py-3">Cupom</th>
                 <th className="px-4 py-3">Desconto</th>
                 <th className="px-4 py-3">Status</th>
@@ -148,6 +149,11 @@ function InscritosPage() {
                       <code className="rounded bg-[#f3f0ee] px-2 py-0.5 font-mono text-[11px] text-[#731111]">{r.cupom}</code>
                     ) : <span className="text-[#6b6b6b]">—</span>}
                   </td>
+                  <td className="px-4 py-3">
+                      <span className="rounded-full bg-[#f3f0ee] px-2 py-0.5 font-body text-[11px] font-medium text-[#731111]">
+                        {INGRESSO_LABELS[r.tipoIngresso]}
+                      </span>
+                    </td>
                   <td className="px-4 py-3 text-[#6b6b6b]">{r.descontoLabel}</td>
                   <td className="px-4 py-3"><StatusBadge status={r.status} /></td>
                   <td className="px-4 py-3 text-right">
