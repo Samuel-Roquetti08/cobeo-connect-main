@@ -5,7 +5,7 @@ import {
   Copy, Upload, FileText, ChevronDown, Plus, Info,
 } from "lucide-react";
 import { SectionTitle } from "./SectionTitle";
-import { precos } from "@/data/event";
+import { ingressos, palestrasAvulsas, diasEvento, type IngressoId } from "@/data/event";
 import {
   DadosForm,
   validateDados,
@@ -176,6 +176,9 @@ const INITIAL_DADOS: DadosFormState = {
 
 function FlowEvento({ onSwitchToTrabalho }: { onSwitchToTrabalho: () => void }) {
   const [step, setStep] = useState(0);
+  const [ingressoId, setIngressoId] = useState<IngressoId>("completo");
+  const [palestraSelecionada, setPalestraSelecionada] = useState("");
+  const [diaSelecionado, setDiaSelecionado] = useState("");
   const [data, setData] = useState<DadosFormState>(INITIAL_DADOS);
   const [errors, setErrors] = useState<DadosFormErrors>(EMPTY_ERRORS);
   const [coupon, setCoupon] = useState({
@@ -187,9 +190,12 @@ function FlowEvento({ onSwitchToTrabalho }: { onSwitchToTrabalho: () => void }) 
   const [method, setMethod] = useState<Method>("pix");
   const [showCombineBanner, setShowCombineBanner] = useState(true);
 
+  const ingressoSelecionado = ingressos.find((i) => i.id === ingressoId) ?? ingressos[2];
+  const valorBase = ingressoSelecionado.valor;
+
   const total = useMemo(
-    () => Math.max(0, precos.evento - coupon.discount),
-    [coupon.discount],
+    () => Math.max(0, valorBase - coupon.discount),
+    [valorBase, coupon.discount],
   );
 
   function applyCoupon() {
@@ -200,7 +206,7 @@ function FlowEvento({ onSwitchToTrabalho }: { onSwitchToTrabalho: () => void }) 
       if (found) {
         const discount =
           found.tipo === "percentual"
-            ? Math.round(precos.evento * (found.valor / 100))
+            ? Math.round(valorBase * (found.valor / 100))
             : found.valor;
         const label =
           found.tipo === "percentual"
@@ -214,6 +220,14 @@ function FlowEvento({ onSwitchToTrabalho }: { onSwitchToTrabalho: () => void }) 
   }
 
   function handleContinuar() {
+    if (ingressoId === "palestra" && !palestraSelecionada) {
+      alert("Por favor, selecione uma palestra antes de continuar.");
+      return;
+    }
+    if (ingressoId === "dia" && !diaSelecionado) {
+      alert("Por favor, selecione o dia antes de continuar.");
+      return;
+    }
     const validated = validateDados(data);
     setErrors(validated);
     if (isDadosValid(validated)) setStep(1);
@@ -229,6 +243,116 @@ function FlowEvento({ onSwitchToTrabalho }: { onSwitchToTrabalho: () => void }) 
           <motion.div key="s1" variants={fade} initial="hidden" animate="visible" exit="exit">
             <div className="grid gap-8 md:grid-cols-[1fr_300px]">
               <div className="space-y-6">
+                {/* Seletor de ingresso */}
+                <div role="group" aria-labelledby="ingresso-label">
+                  <p id="ingresso-label" className="mb-3 font-body text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Selecione seu ingresso
+                  </p>
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    {ingressos.map((ing) => (
+                      <button
+                        key={ing.id}
+                        type="button"
+                        role="radio"
+                        aria-checked={ingressoId === ing.id}
+                        onClick={() => {
+                          setIngressoId(ing.id as IngressoId);
+                          setCoupon({ code: "", state: "idle", discount: 0, label: "" });
+                          setPalestraSelecionada("");
+                          setDiaSelecionado("");
+                        }}
+                        className={`relative rounded-xl border-2 px-4 py-4 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+                          ingressoId === ing.id
+                            ? "border-primary bg-[#fff8f8]"
+                            : "border-border bg-surface hover:border-primary/40"
+                        }`}
+                      >
+                        {ing.badge && (
+                          <span className="absolute -top-2 right-3 rounded-full bg-gold px-2 py-0.5 font-body text-[10px] font-bold text-primary">
+                            {ing.badge}
+                          </span>
+                        )}
+                        {ingressoId === ing.id && (
+                          <span className="absolute right-3 top-3 flex h-5 w-5 items-center justify-center rounded-full bg-primary">
+                            <Check className="h-3 w-3 text-white" aria-hidden="true" />
+                          </span>
+                        )}
+                        <div className="font-display text-sm font-bold text-foreground">{ing.label}</div>
+                        <div className="mt-1 font-body text-[11px] text-muted-foreground leading-snug">{ing.descricao}</div>
+                        <div className="mt-2 font-display text-lg font-extrabold text-primary">
+                          R$ {ing.valor.toFixed(2).replace(".", ",")}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Seletor condicional — Palestra avulsa */}
+                {ingressoId === "palestra" && (
+                  <div>
+                    <label
+                      htmlFor="select-palestra"
+                      className="mb-1 block font-body text-xs font-semibold text-foreground"
+                    >
+                      Escolha a palestra
+                      <span className="ml-0.5 text-destructive" aria-hidden="true">*</span>
+                    </label>
+                    <select
+                      id="select-palestra"
+                      value={palestraSelecionada}
+                      onChange={(e) => setPalestraSelecionada(e.target.value)}
+                      className="w-full rounded-md border border-input bg-surface px-3 py-2 font-body text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                    >
+                      <option value="">Selecione uma palestra...</option>
+                      {palestrasAvulsas.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.dia} · {p.hora} — {p.titulo}
+                          {p.speaker ? ` (${p.speaker})` : ""}
+                        </option>
+                      ))}
+                    </select>
+                    {palestraSelecionada && (
+                      <p className="mt-1 font-body text-[11px] text-muted-foreground">
+                        ✓ Palestra selecionada — seu crachá será vinculado a este evento.
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* Seletor condicional — 1 Dia */}
+                {ingressoId === "dia" && (
+                  <div>
+                    <label
+                      htmlFor="select-dia"
+                      className="mb-1 block font-body text-xs font-semibold text-foreground"
+                    >
+                      Escolha o dia
+                      <span className="ml-0.5 text-destructive" aria-hidden="true">*</span>
+                    </label>
+                    <div className="grid gap-2 sm:grid-cols-3">
+                      {diasEvento.map((d) => (
+                        <button
+                          key={d.id}
+                          type="button"
+                          onClick={() => setDiaSelecionado(d.id)}
+                          className={`rounded-lg border-2 px-4 py-3 text-center font-body text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+                            diaSelecionado === d.id
+                              ? "border-primary bg-[#fff8f8] text-primary"
+                              : "border-border bg-surface text-foreground hover:border-primary/40"
+                          }`}
+                        >
+                          {d.label}
+                        </button>
+                      ))}
+                    </div>
+                    {diaSelecionado && (
+                      <p className="mt-1 font-body text-[11px] text-muted-foreground">
+                        ✓ Dia selecionado — acesso completo à programação deste dia.
+                      </p>
+                    )}
+                  </div>
+                )}
+
                 <DadosForm
                   value={data}
                   onChange={setData}
@@ -246,7 +370,7 @@ function FlowEvento({ onSwitchToTrabalho }: { onSwitchToTrabalho: () => void }) 
                 />
               </div>
               <OrderSummary
-                lines={[{ label: "Inscrição no Evento", value: precos.evento }]}
+                lines={[{ label: ingressoSelecionado.label, value: valorBase }]}
                 discount={coupon.state === "valid" ? coupon.discount : 0}
                 discountLabel={coupon.label}
                 total={total}
@@ -298,6 +422,7 @@ function FlowEvento({ onSwitchToTrabalho }: { onSwitchToTrabalho: () => void }) 
               method={method}
               setMethod={setMethod}
               total={total}
+              labelLinha={ingressoSelecionado.label}
               onBack={() => setStep(0)}
               onConfirm={() => setStep(2)}
             />

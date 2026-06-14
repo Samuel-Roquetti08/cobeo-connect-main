@@ -1,10 +1,16 @@
-// Mock data for the COBEO admin dashboard.
+import {
+  palestrasAvulsas, diasEvento,
+  type IngressoId, type PalestraId, type DiaId,
+  INGRESSO_LABELS,
+} from "./event";
+
+export { INGRESSO_LABELS };
+
+// ─── Tipos ────────────────────────────────────────────────────────────────────
 export type Status = "Confirmado" | "Pendente" | "Cancelado";
-export type CouponCategory =
-  | "Aluno Interno"
-  | "Servidor Público"
-  | "Aluno Externo"
-  | "Público Geral";
+export type CouponCategory = "Aluno Interno" | "Servidor Público" | "Aluno Externo" | "Público Geral";
+export type TipoIngresso = IngressoId;
+export type { PalestraId, DiaId };
 
 export interface Inscrito {
   id: string;
@@ -12,25 +18,33 @@ export interface Inscrito {
   email: string;
   telefone: string;
   whatsapp: string;
-  dataInscricao: string; // ISO
+  dataInscricao: string;
+  // Ingresso
+  tipoIngresso: TipoIngresso;
+  palestraId: PalestraId | null;   // preenchido se tipoIngresso === "palestra"
+  diaId: DiaId | null;             // preenchido se tipoIngresso === "dia"
+  // Cupom
   cupom: string | null;
   cupomCategoria: CouponCategory | null;
-  descontoLabel: string; // "R$ 50,00" | "20%" | "—"
+  descontoLabel: string;
+  // Pagamento
   status: Status;
   valorPago: number;
+  // Presença
+  presenca: "ausente" | "presente";
+  checkInEm: string | null;
+  codigoInscricao: string;
 }
 
 export interface Trabalho {
   id: string;
   titulo: string;
   responsavel: string;
-  responsavelEmail: string;
   coautores: string[];
   categoria: string;
-  arquivo: { nome: string; tipo: "PDF" | "DOC" } | null;
+  arquivoNome: string | null;
   dataSubmissao: string;
-  statusPagamento: Status;
-  resumo: string;
+  status: Status;
 }
 
 export interface Cupom {
@@ -41,82 +55,84 @@ export interface Cupom {
   tipo: "fixo" | "percentual";
   valor: number;
   status: "Disponível" | "Utilizado";
+  usadoPor: string | null;
   usadoEm: string | null;
-  criadoEm: string;
 }
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 const NOMES = [
-  "Ana Beatriz Souza","Bruno Almeida","Carla Mendes","Daniel Ferreira","Eduarda Lima",
-  "Felipe Rocha","Gabriela Castro","Henrique Martins","Isabela Cardoso","João Pedro Silva",
-  "Karen Vasconcelos","Leonardo Pinto","Mariana Duarte","Natália Ribeiro","Otávio Camargo",
-  "Patrícia Nogueira","Quésia Barbosa","Rafael Tavares","Sofia Andrade","Thiago Borges",
-  "Ursula Macedo","Vinícius Prado","William Carvalho","Yara Monteiro","Zacarias Lopes",
-  "Amanda Coutinho","Beatriz Faria","Caio Henrique","Débora Cunha","Eliane Fonseca",
-  "Fábio Junqueira","Giovana Pacheco","Heloísa Cordeiro","Igor Magalhães","Júlia Bernardes",
-  "Kaique Vidal","Larissa Bittencourt","Marcos Antunes","Nicole Bastos","Pedro Henrique Alves",
+  "Ana Souza","Bruno Lima","Carla Neves","Diego Martins","Eduarda Costa",
+  "Felipe Ramos","Gabriela Silva","Henrique Alves","Isabela Rocha","João Mendes",
+  "Karina Ferreira","Lucas Pereira","Mariana Santos","Nicolas Cardoso","Olivia Teixeira",
+  "Paulo Barbosa","Quézia Andrade","Rafael Moura","Simone Gomes","Thiago Castro",
+  "Ursula Pinto","Victor Leal","Wanessa Faria","Xavier Borges","Yara Cunha",
+  "Zé Paulo","Amanda Reis","Bernardo Melo","Cíntia Nunes","Daniel Freitas",
 ];
-
-const CATEGORIAS_CUPOM: CouponCategory[] = [
-  "Aluno Interno","Servidor Público","Aluno Externo","Público Geral",
-];
-
 const STATUS: Status[] = ["Confirmado","Confirmado","Confirmado","Pendente","Cancelado"];
+const CATEGORIES: CouponCategory[] = ["Aluno Interno","Servidor Público","Aluno Externo","Público Geral"];
+const TIPOS: TipoIngresso[] = ["palestra","palestra","dia","completo","completo","completo"];
 
-const CATEGORIAS_TRAB = [
-  "Pôster Científico","Artigo Original","Relato de Caso","Revisão de Literatura","Pesquisa Clínica",
-];
-
-function pick<T>(arr: T[], i: number): T { return arr[i % arr.length]; }
-
+function pick<T>(arr: readonly T[], i: number): T { return arr[i % arr.length]; }
+function emailFor(s: string) { return s.toLowerCase().replace(/\s+/g,".")+".cobeo@email.com"; }
+function phoneFor(i: number) { return `(1${(i%9)+1}) 9${String(i*7+1000).padStart(4,"0")}-${String(i*3+2000).padStart(4,"0")}`; }
 function dateInLast30(i: number) {
-  const d = new Date();
+  const d = new Date(2026, 5, 13);
   d.setDate(d.getDate() - (i % 30));
-  d.setHours(8 + (i % 10), (i * 7) % 60, 0, 0);
   return d.toISOString();
 }
-
-function emailFor(nome: string) {
-  const base = nome
-    .toLowerCase()
-    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z\s]/g, "")
-    .split(" ").slice(0, 2).join(".");
-  return `${base}@email.com`;
+function genCodigo(i: number) {
+  return "COBEO-" + String(i + 1).padStart(4, "0");
 }
 
-function phoneFor(i: number) {
-  const ddd = 11 + (i % 80);
-  const n = 90000000 + (i * 31337) % 9999999;
-  return `(${ddd}) 9${String(n).slice(0, 4)}-${String(n).slice(4, 8)}`;
-}
-
-export const cupons: Cupom[] = Array.from({ length: 32 }, (_, i) => {
-  const cat = pick(CATEGORIAS_CUPOM, i);
-  const tipo: Cupom["tipo"] = i % 3 === 0 ? "percentual" : "fixo";
-  const valor = tipo === "percentual" ? [10, 15, 20, 25][i % 4] : [30, 50, 80, 100][i % 4];
-  const utilizado = i % 3 !== 1;
+// ─── Cupons ───────────────────────────────────────────────────────────────────
+export const cupons: Cupom[] = Array.from({ length: 60 }, (_, i) => {
+  const utilizado = i % 3 === 0;
+  const titular = pick(NOMES, i + 5);
   return {
     id: `cup-${i + 1}`,
-    codigo: `COBEO${String(1000 + i)}`,
-    titular: pick(NOMES, i + 5),
-    categoria: cat,
-    tipo,
-    valor,
+    codigo: `COB${String(i + 1).padStart(3,"0")}`,
+    titular,
+    categoria: pick(CATEGORIES, i),
+    tipo: i % 2 === 0 ? "percentual" : "fixo",
+    valor: i % 2 === 0 ? [10,15,20,25,30][i%5] : [20,30,40,50][i%4],
     status: utilizado ? "Utilizado" : "Disponível",
-    usadoEm: utilizado ? dateInLast30(i) : null,
-    criadoEm: dateInLast30(i + 7),
+    usadoPor: utilizado ? pick(NOMES, i + 10) : null,
+    usadoEm: utilizado ? dateInLast30(i + 2) : null,
   };
 });
 
+// ─── Inscritos ────────────────────────────────────────────────────────────────
 export const inscritos: Inscrito[] = Array.from({ length: 247 }, (_, i) => {
   const nome = pick(NOMES, i);
   const cupom = i % 4 === 0 ? cupons[i % cupons.length] : null;
   const status = pick(STATUS, i);
+  const tipoIngresso = pick(TIPOS, i);
   const desconto = cupom
     ? cupom.tipo === "percentual"
       ? `${cupom.valor}%`
-      : `R$ ${cupom.valor.toFixed(2).replace(".", ",")}`
+      : `R$ ${cupom.valor.toFixed(2).replace(".",",")}`
     : "—";
+
+  // Palestra ou dia escolhido conforme tipo
+  const palestraId: PalestraId | null =
+    tipoIngresso === "palestra"
+      ? palestrasAvulsas[i % palestrasAvulsas.length].id
+      : null;
+  const diaId: DiaId | null =
+    tipoIngresso === "dia"
+      ? diasEvento[i % diasEvento.length].id as DiaId
+      : null;
+
+  // Valor base por tipo
+  const valorBase = tipoIngresso === "palestra" ? 80 : tipoIngresso === "dia" ? 150 : 280;
+  const descontoValor = cupom
+    ? cupom.tipo === "percentual"
+      ? valorBase * (cupom.valor / 100)
+      : cupom.valor
+    : 0;
+
+  const presenca = status === "Confirmado" && i % 5 === 0 ? "presente" : "ausente";
+
   return {
     id: `ins-${i + 1}`,
     nome,
@@ -124,14 +140,21 @@ export const inscritos: Inscrito[] = Array.from({ length: 247 }, (_, i) => {
     telefone: phoneFor(i),
     whatsapp: phoneFor(i + 1),
     dataInscricao: dateInLast30(i),
+    tipoIngresso,
+    palestraId,
+    diaId,
     cupom: cupom?.codigo ?? null,
     cupomCategoria: cupom?.categoria ?? null,
     descontoLabel: desconto,
     status,
-    valorPago: status === "Cancelado" ? 0 : 280 - (cupom ? (cupom.tipo === "percentual" ? 280 * cupom.valor / 100 : cupom.valor) : 0),
+    valorPago: status === "Cancelado" ? 0 : Math.max(0, valorBase - descontoValor),
+    presenca,
+    checkInEm: presenca === "presente" ? dateInLast30(i + 1) : null,
+    codigoInscricao: genCodigo(i),
   };
 });
 
+// ─── Trabalhos ────────────────────────────────────────────────────────────────
 export const trabalhos: Trabalho[] = Array.from({ length: 43 }, (_, i) => {
   const responsavel = pick(NOMES, i + 3);
   const nCoaut = i % 4;
@@ -150,46 +173,40 @@ export const trabalhos: Trabalho[] = Array.from({ length: 43 }, (_, i) => {
       "Alinhadores ortodônticos: revisão sistemática",
     ][i % 8] + ` — estudo ${i + 1}`,
     responsavel,
-    responsavelEmail: emailFor(responsavel + (i + 3)),
     coautores,
-    categoria: pick(CATEGORIAS_TRAB, i),
-    arquivo: temArquivo ? { nome: `trabalho-${i + 1}.pdf`, tipo: i % 2 === 0 ? "PDF" : "DOC" } : null,
-    dataSubmissao: dateInLast30(i),
-    statusPagamento: pick(STATUS, i + 1),
-    resumo: "Estudo conduzido com metodologia rigorosa, envolvendo análise quantitativa e qualitativa dos resultados obtidos ao longo de 18 meses de observação clínica.",
+    categoria: ["Pesquisa Científica","Relato de Caso","Revisão de Literatura","Painel Acadêmico"][i % 4],
+    arquivoNome: temArquivo ? `trabalho_${i + 1}.pdf` : null,
+    dataSubmissao: dateInLast30(i + 5),
+    status: pick(STATUS, i + 2),
   };
 });
 
-// Inscrições por dia (últimos 7 dias)
-export const inscricoesPorDia = (() => {
-  const dias: { dia: string; total: number }[] = [];
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
+// ─── Agregados para Dashboard ─────────────────────────────────────────────────
+export function inscricoesPorDia(dias: number = 7) {
+  return Array.from({ length: dias }, (_, i) => {
+    const d = new Date(2026, 5, 13 - (dias - 1 - i));
     const label = d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
-    const total = inscritos.filter((x) => {
-      const xd = new Date(x.dataInscricao);
-      return xd.toDateString() === d.toDateString();
-    }).length || (10 + ((i * 13) % 25));
-    dias.push({ dia: label, total });
-  }
-  return dias;
-})();
-
-export const distribuicaoCupons = (() => {
-  const counts: Record<string, number> = {
-    "Aluno Interno": 0,
-    "Servidor Público": 0,
-    "Aluno Externo": 0,
-    "Público Geral": 0,
-    "Sem Cupom": 0,
-  };
-  inscritos.forEach((i) => {
-    if (i.cupomCategoria) counts[i.cupomCategoria]++;
-    else counts["Sem Cupom"]++;
+    return { date: label, total: Math.floor(Math.random() * 30) + 5 };
   });
-  return counts;
-})();
+}
+
+export function distribuicaoCupons() {
+  const result: Record<string, number> = {
+    "Aluno Interno": 0, "Servidor Público": 0,
+    "Aluno Externo": 0, "Público Geral": 0, "Sem Cupom": 0,
+  };
+  for (const ins of inscritos) {
+    if (ins.cupomCategoria) result[ins.cupomCategoria]++;
+    else result["Sem Cupom"]++;
+  }
+  return result;
+}
+
+export function distribuicaoIngressos() {
+  const result: Record<TipoIngresso, number> = { palestra: 0, dia: 0, completo: 0 };
+  for (const ins of inscritos) result[ins.tipoIngresso]++;
+  return result;
+}
 
 export const COUPON_COLORS: Record<string, string> = {
   "Aluno Interno": "#731111",
@@ -197,11 +214,4 @@ export const COUPON_COLORS: Record<string, string> = {
   "Aluno Externo": "#C9A84C",
   "Público Geral": "#d9d9d9",
   "Sem Cupom": "#f3f0ee",
-};
-
-export const COUPON_PILL: Record<CouponCategory, string> = {
-  "Aluno Interno": "bg-blue-100 text-blue-800",
-  "Servidor Público": "bg-purple-100 text-purple-800",
-  "Aluno Externo": "bg-teal-100 text-teal-800",
-  "Público Geral": "bg-gray-200 text-gray-700",
 };

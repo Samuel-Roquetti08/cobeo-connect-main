@@ -19,6 +19,7 @@ import { Route as AdminDashboardRouteImport } from './routes/admin.dashboard'
 import { Route as AdminCuponsRouteImport } from './routes/admin.cupons'
 import { Route as AdminCrachasRouteImport } from './routes/admin.crachas'
 import { Route as AdminConfiguracoesRouteImport } from './routes/admin.configuracoes'
+import { Route as AdminCheckinRouteImport } from './routes/admin.checkin'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -70,9 +71,15 @@ const AdminConfiguracoesRoute = AdminConfiguracoesRouteImport.update({
   path: '/admin/configuracoes',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminCheckinRoute = AdminCheckinRouteImport.update({
+  id: '/admin/checkin',
+  path: '/admin/checkin',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin/checkin': typeof AdminCheckinRoute
   '/admin/configuracoes': typeof AdminConfiguracoesRoute
   '/admin/crachas': typeof AdminCrachasRoute
   '/admin/cupons': typeof AdminCuponsRoute
@@ -85,6 +92,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/admin/checkin': typeof AdminCheckinRoute
   '/admin/configuracoes': typeof AdminConfiguracoesRoute
   '/admin/crachas': typeof AdminCrachasRoute
   '/admin/cupons': typeof AdminCuponsRoute
@@ -98,6 +106,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin/checkin': typeof AdminCheckinRoute
   '/admin/configuracoes': typeof AdminConfiguracoesRoute
   '/admin/crachas': typeof AdminCrachasRoute
   '/admin/cupons': typeof AdminCuponsRoute
@@ -112,6 +121,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/admin/checkin'
     | '/admin/configuracoes'
     | '/admin/crachas'
     | '/admin/cupons'
@@ -124,6 +134,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/admin/checkin'
     | '/admin/configuracoes'
     | '/admin/crachas'
     | '/admin/cupons'
@@ -136,6 +147,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/admin/checkin'
     | '/admin/configuracoes'
     | '/admin/crachas'
     | '/admin/cupons'
@@ -149,6 +161,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminCheckinRoute: typeof AdminCheckinRoute
   AdminConfiguracoesRoute: typeof AdminConfiguracoesRoute
   AdminCrachasRoute: typeof AdminCrachasRoute
   AdminCuponsRoute: typeof AdminCuponsRoute
@@ -232,11 +245,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminConfiguracoesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/checkin': {
+      id: '/admin/checkin'
+      path: '/admin/checkin'
+      fullPath: '/admin/checkin'
+      preLoaderRoute: typeof AdminCheckinRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminCheckinRoute: AdminCheckinRoute,
   AdminConfiguracoesRoute: AdminConfiguracoesRoute,
   AdminCrachasRoute: AdminCrachasRoute,
   AdminCuponsRoute: AdminCuponsRoute,
