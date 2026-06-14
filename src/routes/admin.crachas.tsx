@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { useState, useRef } from "react";
-import { Search, Download, Printer, BadgeCheck, QrCode } from "lucide-react";
+import { Search, Download, Printer, BadgeCheck, QrCode, PrinterCheck } from "lucide-react";
 import { StatusBadge } from "@/components/admin/StatusBadge";
 import { inscritos } from "@/data/mockAdmin";
 
@@ -248,6 +248,122 @@ function CrachasPage() {
 
   const inscritoSelecionado = confirmados.find((i) => i.id === selected);
 
+  function handlePrintAll() {
+    // Gera o HTML de todos os crachás da lista filtrada atual
+    const crachasHTML = filtered.map((inscrito) => {
+      const codigo = `COBEO-${inscrito.id.replace("ins-", "").padStart(4, "0")}`;
+      // Reutiliza o mesmo design do CrachaPreview renderizado como string HTML inline
+      return `
+        <div style="
+          width:320px; height:200px; border:2px solid #731111; border-radius:8px;
+          overflow:hidden; display:flex; flex-direction:column;
+          font-family:Poppins,sans-serif; background:#fff;
+          page-break-inside:avoid; margin-bottom:16px;
+        ">
+          <!-- Header -->
+          <div style="background:#731111;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;">
+            <div>
+              <div style="color:#C9A84C;font-size:8px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;">
+                UNIFAFIBE · Odontologia
+              </div>
+              <div style="color:#fff;font-size:13px;font-weight:800;font-family:Raleway,sans-serif;">
+                II COBEO 2026
+              </div>
+            </div>
+            <div style="width:36px;height:36px;border-radius:50%;border:2px solid #C9A84C;display:flex;align-items:center;justify-content:center;color:#C9A84C;font-size:9px;font-weight:700;text-align:center;line-height:1.1;">
+              II<br/>ED.
+            </div>
+          </div>
+          <!-- Corpo -->
+          <div style="flex:1;display:flex;align-items:center;padding:12px 16px;gap:14px;">
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:7px;color:#6b6b6b;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:3px;">Participante</div>
+              <div style="font-size:15px;font-weight:700;color:#1a1a1a;font-family:Raleway,sans-serif;line-height:1.2;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                ${inscrito.nome}
+              </div>
+              <div style="font-size:9px;color:#6b6b6b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                ${inscrito.email}
+              </div>
+              <div style="margin-top:10px;display:inline-block;background:#f9f6f4;border:1px solid #d9d9d9;border-radius:4px;padding:2px 8px;font-family:monospace;font-size:10px;color:#731111;font-weight:700;letter-spacing:0.08em;">
+                ${codigo}
+              </div>
+            </div>
+            <!-- QR Code placeholder -->
+            <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+              <div style="width:72px;height:72px;border:1px solid #e5e7eb;border-radius:4px;background:#fff;display:flex;align-items:center;justify-content:center;">
+                <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#731111" stroke-width="2">
+                  <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+                  <rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3h-3z"/>
+                  <path d="M17 17h4v4h-4z"/><path d="M14 17v4"/><path d="M17 14h4"/>
+                </svg>
+              </div>
+              <div style="font-size:7px;color:#6b6b6b;text-align:center;">Check-in</div>
+            </div>
+          </div>
+          <!-- Footer -->
+          <div style="border-top:1px solid #f0eceb;padding:5px 16px;display:flex;justify-content:space-between;align-items:center;">
+            <div style="font-size:7px;color:#b5736f;">Bebedouro · SP · Agosto 2026</div>
+            <div style="width:20px;height:2px;background:#C9A84C;border-radius:2px;"></div>
+            <div style="font-size:7px;color:#b5736f;">scientia ad vitam</div>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    const janela = window.open("", "_blank", "width=900,height=700");
+    if (!janela) return;
+    janela.document.write(`
+      <html>
+        <head>
+          <title>Crachás · II COBEO · ${filtered.length} participantes</title>
+          <link rel="preconnect" href="https://fonts.googleapis.com">
+          <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@700;800&family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+          <style>
+            * { box-sizing: border-box; margin: 0; padding: 0; }
+            body { font-family: Poppins, sans-serif; background: #f9f6f4; padding: 24px; }
+            .header {
+              display: flex; align-items: center; justify-content: space-between;
+              margin-bottom: 24px; padding-bottom: 16px; border-bottom: 2px solid #731111;
+            }
+            .header h1 { font-family: Raleway, sans-serif; font-size: 20px; color: #731111; }
+            .header p { font-size: 12px; color: #6b6b6b; margin-top: 2px; }
+            .grid {
+              display: grid;
+              grid-template-columns: repeat(auto-fill, 320px);
+              gap: 16px;
+              justify-content: center;
+            }
+            .print-btn {
+              background: #731111; color: white; border: none; border-radius: 6px;
+              padding: 10px 24px; font-family: Poppins, sans-serif; font-size: 13px;
+              font-weight: 600; cursor: pointer;
+            }
+            .print-btn:hover { background: #8a1515; }
+            @media print {
+              .header .print-btn { display: none; }
+              body { background: white; padding: 8px; }
+              .grid { gap: 8px; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div>
+              <h1>II COBEO 2026 — Crachás</h1>
+              <p>${filtered.length} participante(s) confirmado(s)</p>
+            </div>
+            <button class="print-btn" onclick="window.print()">🖨️ Imprimir todos</button>
+          </div>
+          <div class="grid">
+            ${crachasHTML}
+          </div>
+        </body>
+      </html>
+    `);
+    janela.document.close();
+    janela.focus();
+  }
+
   function handlePrint() {
     if (!printRef.current) return;
     const conteudo = printRef.current.innerHTML;
@@ -276,6 +392,28 @@ function CrachasPage() {
     <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
       {/* Coluna esquerda — lista */}
       <div className="space-y-4">
+        {/* Barra de ações — topo */}
+        <div className="flex items-center justify-between gap-4 rounded-xl border border-[#d9d9d9] bg-white p-4">
+          <div>
+            <p className="text-[14px] font-semibold text-[#1a1a1a]">
+              {filtered.length === confirmados.length
+                ? `${confirmados.length} crachás disponíveis`
+                : `${filtered.length} de ${confirmados.length} crachás (filtrado)`}
+            </p>
+            <p className="text-[11px] text-[#6b6b6b]">
+              Apenas inscritos com pagamento confirmado
+            </p>
+          </div>
+          <button
+            onClick={handlePrintAll}
+            disabled={filtered.length === 0}
+            className="flex items-center gap-2 rounded-md bg-[#731111] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#8a1515] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A84C]"
+          >
+            <PrinterCheck className="h-4 w-4" aria-hidden="true" />
+            Imprimir Todos
+          </button>
+        </div>
+
         {/* Stats rápidos */}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           {[
