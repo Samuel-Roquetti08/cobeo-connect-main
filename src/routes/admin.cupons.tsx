@@ -1,12 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { useMemo, useState } from "react";
+import { Plus, Search, Eye, Trash2, X, Loader2, AlertCircle, RefreshCw } from "lucide-react";
+import { useCupons, useCreateCupom, useDeleteCupom } from "@/lib/api/adminHooks";
 import {
-  Plus, Search, Eye, Trash2, X,
-} from "lucide-react";
-import {
-  cupons as seedCupons, COUPON_PILL, type Cupom, type CouponCategory,
-} from "@/data/mockAdmin";
+  type Cupom, type CupomCategoria, type CupomStatus,
+  CUPOM_CATEGORIA_LABELS,
+} from "@/lib/api/adminTypes";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/admin/cupons")({
@@ -18,45 +18,113 @@ export const Route = createFileRoute("/admin/cupons")({
   ),
 });
 
-const CATS: ("Todos" | CouponCategory)[] = [
-  "Todos", "Aluno Interno", "Servidor Público", "Aluno Externo", "Público Geral",
+// Pílulas de cor por categoria (chave = enum do banco)
+const COUPON_PILL: Record<CupomCategoria, string> = {
+  aluno_interno: "bg-[#dbeafe] text-[#1e40af]",
+  servidor_publico: "bg-[#f3e8ff] text-[#7e22ce]",
+  aluno_externo: "bg-[#ccfbf1] text-[#0f766e]",
+  publico_geral: "bg-[#f3f4f6] text-[#4b5563]",
+};
+
+const CAT_BAR_COLOR: Record<CupomCategoria, string> = {
+  aluno_interno: "#3b82f6",
+  servidor_publico: "#9333ea",
+  aluno_externo: "#0d9488",
+  publico_geral: "#9ca3af",
+};
+
+const CAT_OPTS: (CupomCategoria | "todos")[] = [
+  "todos", "aluno_interno", "servidor_publico", "aluno_externo", "publico_geral",
 ];
 
+const STATUS_OPTS: (CupomStatus | "todos")[] = ["todos", "disponivel", "utilizado"];
+
+const STATUS_LABEL: Record<CupomStatus, string> = {
+  disponivel: "Disponível",
+  utilizado: "Utilizado",
+  expirado: "Expirado",
+};
+
 function CuponsPage() {
-  const [list, setList] = useState<Cupom[]>(seedCupons);
+  const { data: cupons, isLoading, isError, error, refetch } = useCupons();
+  const createCupom = useCreateCupom();
+  const deleteCupom = useDeleteCupom();
+
   const [q, setQ] = useState("");
-  const [catFilter, setCatFilter] = useState<"Todos" | CouponCategory>("Todos");
-  const [statusFilter, setStatusFilter] = useState<"Todos" | "Disponível" | "Utilizado">("Todos");
+  const [catFilter, setCatFilter] = useState<CupomCategoria | "todos">("todos");
+  const [statusFilter, setStatusFilter] = useState<CupomStatus | "todos">("todos");
   const [modalOpen, setModalOpen] = useState(false);
   const [viewing, setViewing] = useState<Cupom | null>(null);
   const [confirmDel, setConfirmDel] = useState<Cupom | null>(null);
 
+  const list = cupons ?? [];
+
   const filtered = useMemo(() => list.filter((c) => {
     if (q && !c.codigo.toLowerCase().includes(q.toLowerCase()) && !c.titular.toLowerCase().includes(q.toLowerCase())) return false;
-    if (catFilter !== "Todos" && c.categoria !== catFilter) return false;
-    if (statusFilter !== "Todos" && c.status !== statusFilter) return false;
+    if (catFilter !== "todos" && c.categoria !== catFilter) return false;
+    if (statusFilter !== "todos" && c.status !== statusFilter) return false;
     return true;
   }), [list, q, catFilter, statusFilter]);
 
   const total = list.length;
-  const disponiveis = list.filter((c) => c.status === "Disponível").length;
-  const utilizados = list.filter((c) => c.status === "Utilizado").length;
+  const disponiveis = list.filter((c) => c.status === "disponivel").length;
+  const utilizados = list.filter((c) => c.status === "utilizado").length;
+  // Economia estimada: cupons fixos contam o valor; percentuais estimam sobre um curso médio (R$40)
   const economia = list
-    .filter((c) => c.status === "Utilizado")
-    .reduce((s, c) => s + (c.tipo === "fixo" ? c.valor : 280 * c.valor / 100), 0);
+    .filter((c) => c.status === "utilizado")
+    .reduce((s, c) => s + (c.tipo === "fixo" ? c.valor : 40 * c.valor / 100), 0);
 
-  const porCategoria = (["Aluno Interno", "Servidor Público", "Aluno Externo", "Público Geral"] as CouponCategory[])
+  const porCategoria = (["aluno_interno", "servidor_publico", "aluno_externo", "publico_geral"] as CupomCategoria[])
     .map((cat) => ({ cat, count: list.filter((c) => c.categoria === cat).length }));
   const maxCount = Math.max(...porCategoria.map((p) => p.count), 1);
 
-  function addCupom(c: Cupom) {
-    setList((l) => [c, ...l]);
-    toast.success("Cupom criado", { description: `${c.codigo} — ${c.titular}` });
+  function handleCreate(input: {
+    codigo: string; titular: string; categoria: CupomCategoria;
+    tipo: "fixo" | "percentual"; valor: number;
+  }) {
+    createCupom.mutate(input, {
+      onSuccess: (c) => {
+        toast.success("Cupom criado", { description: `${c.codigo} — ${c.titular}` });
+        setModalOpen(false);
+      },
+      onError: (e) => {
+        const msg = (e as Error)?.message ?? "";
+        if (msg.includes("duplicate") || msg.includes("unique")) {
+          toast.error("Código já existe", { description: "Escolha outro código de cupom." });
+        } else {
+          toast.error("Erro ao criar cupom", { description: msg });
+        }
+      },
+    });
   }
-  function removeCupom(id: string) {
-    setList((l) => l.filter((x) => x.id !== id));
-    toast.success("Cupom removido");
-    setConfirmDel(null);
+
+  function handleDelete(id: string) {
+    deleteCupom.mutate(id, {
+      onSuccess: () => { toast.success("Cupom removido"); setConfirmDel(null); },
+      onError: (e) => toast.error("Erro ao remover", { description: (e as Error)?.message }),
+    });
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-3 py-24 text-[#6b6b6b]">
+        <Loader2 className="h-8 w-8 animate-spin text-[#731111]" />
+        <p className="text-sm">Carregando cupons...</p>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-3 py-24 text-center">
+        <AlertCircle className="h-10 w-10 text-red-500" />
+        <p className="font-semibold text-[#1a1a1a]">Não foi possível carregar os cupons</p>
+        <p className="max-w-md text-[13px] text-[#6b6b6b]">{(error as Error)?.message}</p>
+        <button onClick={() => refetch()} className="mt-2 flex items-center gap-2 rounded-md bg-[#731111] px-4 py-2 text-sm font-medium text-white hover:bg-[#8a1515]">
+          <RefreshCw className="h-4 w-4" /> Tentar novamente
+        </button>
+      </div>
+    );
   }
 
   return (
@@ -83,14 +151,18 @@ function CuponsPage() {
           <div className="mt-4 flex flex-wrap items-center gap-4 text-[12px]">
             <div className="flex flex-wrap items-center gap-1.5">
               <span className="text-[#6b6b6b]">Categoria:</span>
-              {CATS.map((c) => (
-                <Chip key={c} active={catFilter === c} onClick={() => setCatFilter(c)}>{c}</Chip>
+              {CAT_OPTS.map((c) => (
+                <Chip key={c} active={catFilter === c} onClick={() => setCatFilter(c)}>
+                  {c === "todos" ? "Todos" : CUPOM_CATEGORIA_LABELS[c]}
+                </Chip>
               ))}
             </div>
             <div className="flex items-center gap-1.5">
               <span className="text-[#6b6b6b]">Status:</span>
-              {(["Todos", "Disponível", "Utilizado"] as const).map((s) => (
-                <Chip key={s} active={statusFilter === s} onClick={() => setStatusFilter(s)}>{s}</Chip>
+              {STATUS_OPTS.map((s) => (
+                <Chip key={s} active={statusFilter === s} onClick={() => setStatusFilter(s)}>
+                  {s === "todos" ? "Todos" : STATUS_LABEL[s]}
+                </Chip>
               ))}
             </div>
           </div>
@@ -117,21 +189,23 @@ function CuponsPage() {
                   <tr key={c.id} className="border-t border-[#f0eceb] hover:bg-[#faf8f7]">
                     <td className="px-4 py-3 text-[12px] text-[#6b6b6b]">{i + 1}</td>
                     <td className="px-4 py-3">
-                      <code className={`rounded bg-[#f3f0ee] px-2 py-0.5 font-mono text-[11px] text-[#731111] ${c.status === "Utilizado" ? "line-through opacity-60" : ""}`}>
+                      <code className={`rounded bg-[#f3f0ee] px-2 py-0.5 font-mono text-[11px] text-[#731111] ${c.status === "utilizado" ? "line-through opacity-60" : ""}`}>
                         {c.codigo}
                       </code>
                     </td>
                     <td className="px-4 py-3 font-medium text-[#1a1a1a]">{c.titular}</td>
                     <td className="px-4 py-3">
-                      <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${COUPON_PILL[c.categoria]}`}>{c.categoria}</span>
+                      <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${COUPON_PILL[c.categoria]}`}>
+                        {CUPOM_CATEGORIA_LABELS[c.categoria]}
+                      </span>
                     </td>
                     <td className="px-4 py-3 text-[12px] text-[#6b6b6b]">{c.tipo === "fixo" ? "R$ Fixo" : "Percentual"}</td>
                     <td className="px-4 py-3 font-medium text-[#1a1a1a]">
                       {c.tipo === "fixo" ? `R$ ${c.valor.toFixed(2).replace(".", ",")}` : `${c.valor}%`}
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${c.status === "Disponível" ? "bg-[#dcfce7] text-[#166534]" : "bg-[#f3f4f6] text-[#6b7280]"}`}>
-                        {c.status}
+                      <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${c.status === "disponivel" ? "bg-[#dcfce7] text-[#166534]" : "bg-[#f3f4f6] text-[#6b7280]"}`}>
+                        {STATUS_LABEL[c.status]}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-[12px] text-[#6b6b6b]">
@@ -174,20 +248,11 @@ function CuponsPage() {
             {porCategoria.map(({ cat, count }) => (
               <div key={cat}>
                 <div className="flex justify-between text-[12px]">
-                  <span className="text-[#1a1a1a]">{cat}</span>
+                  <span className="text-[#1a1a1a]">{CUPOM_CATEGORIA_LABELS[cat]}</span>
                   <span className="font-medium text-[#6b6b6b]">{count}</span>
                 </div>
                 <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-[#f3f0ee]">
-                  <div
-                    className="h-full rounded-full"
-                    style={{
-                      width: `${(count / maxCount) * 100}%`,
-                      background: cat === "Aluno Interno" ? "#3b82f6"
-                        : cat === "Servidor Público" ? "#9333ea"
-                        : cat === "Aluno Externo" ? "#0d9488"
-                        : "#9ca3af",
-                    }}
-                  />
+                  <div className="h-full rounded-full" style={{ width: `${(count / maxCount) * 100}%`, background: CAT_BAR_COLOR[cat] }} />
                 </div>
               </div>
             ))}
@@ -195,14 +260,15 @@ function CuponsPage() {
         </div>
       </aside>
 
-      {modalOpen && <CreateModal onClose={() => setModalOpen(false)} onCreate={addCupom} />}
+      {modalOpen && <CreateModal onClose={() => setModalOpen(false)} onCreate={handleCreate} submitting={createCupom.isPending} />}
       {viewing && <ViewModal cupom={viewing} onClose={() => setViewing(null)} />}
       {confirmDel && (
         <ConfirmModal
           title="Remover cupom"
           message={`Tem certeza que deseja remover o cupom ${confirmDel.codigo}?`}
           onCancel={() => setConfirmDel(null)}
-          onConfirm={() => removeCupom(confirmDel.id)}
+          onConfirm={() => handleDelete(confirmDel.id)}
+          loading={deleteCupom.isPending}
         />
       )}
     </div>
@@ -240,10 +306,14 @@ function ModalShell({ children, onClose, maxWidth = 480 }: { children: React.Rea
   );
 }
 
-function CreateModal({ onClose, onCreate }: { onClose: () => void; onCreate: (c: Cupom) => void }) {
+function CreateModal({ onClose, onCreate, submitting }: {
+  onClose: () => void;
+  onCreate: (c: { codigo: string; titular: string; categoria: CupomCategoria; tipo: "fixo" | "percentual"; valor: number }) => void;
+  submitting: boolean;
+}) {
   const [codigo, setCodigo] = useState("");
   const [titular, setTitular] = useState("");
-  const [categoria, setCategoria] = useState<CouponCategory>("Aluno Interno");
+  const [categoria, setCategoria] = useState<CupomCategoria>("aluno_interno");
   const [tipo, setTipo] = useState<"fixo" | "percentual">("fixo");
   const [valor, setValor] = useState<number>(50);
 
@@ -259,19 +329,13 @@ function CreateModal({ onClose, onCreate }: { onClose: () => void; onCreate: (c:
       toast.error("Preencha código e titular");
       return;
     }
-    const c: Cupom = {
-      id: `cup-new-${Date.now()}`,
+    onCreate({
       codigo: codigo.trim().toUpperCase(),
       titular: titular.trim(),
       categoria,
       tipo,
       valor: Math.max(1, Math.min(tipo === "percentual" ? 100 : 99999, valor || 0)),
-      status: "Disponível",
-      usadoEm: null,
-      criadoEm: new Date().toISOString(),
-    };
-    onCreate(c);
-    onClose();
+    });
   }
 
   const valorLabel = tipo === "percentual" ? `${valor}%` : `R$ ${(valor || 0).toFixed(2).replace(".", ",")}`;
@@ -305,11 +369,11 @@ function CreateModal({ onClose, onCreate }: { onClose: () => void; onCreate: (c:
         <div>
           <label className="mb-1 block text-[11px] font-medium text-[#6b6b6b]">Categoria</label>
           <select
-            value={categoria} onChange={(e) => setCategoria(e.target.value as CouponCategory)}
+            value={categoria} onChange={(e) => setCategoria(e.target.value as CupomCategoria)}
             className="w-full rounded-md border border-[#d9d9d9] px-3 py-2 text-sm outline-none focus:border-[#731111]"
           >
-            {(["Aluno Interno", "Servidor Público", "Aluno Externo", "Público Geral"] as CouponCategory[]).map((c) => (
-              <option key={c} value={c}>{c}</option>
+            {(["aluno_interno", "servidor_publico", "aluno_externo", "publico_geral"] as CupomCategoria[]).map((c) => (
+              <option key={c} value={c}>{CUPOM_CATEGORIA_LABELS[c]}</option>
             ))}
           </select>
         </div>
@@ -333,9 +397,7 @@ function CreateModal({ onClose, onCreate }: { onClose: () => void; onCreate: (c:
         <div>
           <label className="mb-1 block text-[11px] font-medium text-[#6b6b6b]">Valor</label>
           <div className="relative">
-            {tipo === "fixo" && (
-              <span className="absolute left-3 top-2 text-sm text-[#6b6b6b]">R$</span>
-            )}
+            {tipo === "fixo" && <span className="absolute left-3 top-2 text-sm text-[#6b6b6b]">R$</span>}
             <input
               type="number"
               value={valor}
@@ -344,18 +406,21 @@ function CreateModal({ onClose, onCreate }: { onClose: () => void; onCreate: (c:
               min={1}
               className={`w-full rounded-md border border-[#d9d9d9] py-2 text-sm outline-none focus:border-[#731111] ${tipo === "fixo" ? "pl-10 pr-3" : "px-3"}`}
             />
-            {tipo === "percentual" && (
-              <span className="absolute right-3 top-2 text-sm text-[#6b6b6b]">%</span>
-            )}
+            {tipo === "percentual" && <span className="absolute right-3 top-2 text-sm text-[#6b6b6b]">%</span>}
           </div>
         </div>
         <div className="rounded-lg bg-[#f9f6f4] p-4 text-[12px] text-[#1a1a1a]">
-          Cupom <strong>{codigo || "[CÓDIGO]"}</strong> — {titular || "[NOME]"} ({categoria}) — Desconto de <strong>{valorLabel}</strong>
+          Cupom <strong>{codigo || "[CÓDIGO]"}</strong> — {titular || "[NOME]"} ({CUPOM_CATEGORIA_LABELS[categoria]}) — Desconto de <strong>{valorLabel}</strong>
         </div>
       </div>
       <footer className="flex justify-end gap-2 border-t border-[#f0eceb] px-6 py-4">
         <button onClick={onClose} className="rounded-md px-4 py-2 text-sm font-medium text-[#6b6b6b] hover:bg-[#f3f0ee]">Cancelar</button>
-        <button onClick={submit} className="rounded-md bg-[#731111] px-4 py-2 text-sm font-semibold text-white hover:bg-[#8a1515]">
+        <button
+          onClick={submit}
+          disabled={submitting}
+          className="flex items-center gap-2 rounded-md bg-[#731111] px-4 py-2 text-sm font-semibold text-white hover:bg-[#8a1515] disabled:opacity-60"
+        >
+          {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
           Criar Cupom
         </button>
       </footer>
@@ -373,11 +438,11 @@ function ViewModal({ cupom, onClose }: { cupom: Cupom; onClose: () => void }) {
       <div className="space-y-2 p-6 text-[13px]">
         <KV k="Código" v={cupom.codigo} />
         <KV k="Titular" v={cupom.titular} />
-        <KV k="Categoria" v={cupom.categoria} />
+        <KV k="Categoria" v={CUPOM_CATEGORIA_LABELS[cupom.categoria]} />
         <KV k="Tipo" v={cupom.tipo === "fixo" ? "R$ Fixo" : "Percentual"} />
         <KV k="Valor" v={cupom.tipo === "fixo" ? `R$ ${cupom.valor.toFixed(2).replace(".", ",")}` : `${cupom.valor}%`} />
-        <KV k="Status" v={cupom.status} />
-        <KV k="Criado em" v={new Date(cupom.criadoEm).toLocaleString("pt-BR")} />
+        <KV k="Status" v={STATUS_LABEL[cupom.status]} />
+        <KV k="Criado em" v={new Date(cupom.createdAt).toLocaleString("pt-BR")} />
         <KV k="Usado em" v={cupom.usadoEm ? new Date(cupom.usadoEm).toLocaleString("pt-BR") : "—"} />
       </div>
     </ModalShell>
@@ -393,7 +458,9 @@ function KV({ k, v }: { k: string; v: string }) {
   );
 }
 
-function ConfirmModal({ title, message, onCancel, onConfirm }: { title: string; message: string; onCancel: () => void; onConfirm: () => void }) {
+function ConfirmModal({ title, message, onCancel, onConfirm, loading }: {
+  title: string; message: string; onCancel: () => void; onConfirm: () => void; loading: boolean;
+}) {
   return (
     <ModalShell onClose={onCancel} maxWidth={400}>
       <div className="p-6">
@@ -402,7 +469,10 @@ function ConfirmModal({ title, message, onCancel, onConfirm }: { title: string; 
       </div>
       <footer className="flex justify-end gap-2 border-t border-[#f0eceb] px-6 py-4">
         <button onClick={onCancel} className="rounded-md px-4 py-2 text-sm font-medium text-[#6b6b6b] hover:bg-[#f3f0ee]">Cancelar</button>
-        <button onClick={onConfirm} className="rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700">Remover</button>
+        <button onClick={onConfirm} disabled={loading} className="flex items-center gap-2 rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60">
+          {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+          Remover
+        </button>
       </footer>
     </ModalShell>
   );

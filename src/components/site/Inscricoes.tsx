@@ -5,6 +5,7 @@ import {
   Copy, Upload, FileText, ChevronDown, Plus, Info,
 } from "lucide-react";
 import { SectionTitle } from "./SectionTitle";
+import { supabase } from "@/lib/supabaseClient";
 import {
   cursos, categorias, jantar, trabalho as trabalhoConfig,
   type CategoriaId, type CursoId, type JantarOpcaoId,
@@ -21,11 +22,7 @@ import {
 type Method = "pix" | "debito" | "credito";
 type TabKey = "evento" | "trabalho";
 
-// Cupons mock — substituir por validação server-side (Edge Function) no backend
-const COUPONS: Record<string, { tipo: "fixo" | "percentual"; valor: number }> = {
-  COBEO10: { tipo: "percentual", valor: 10 },
-  ALUNO20: { tipo: "percentual", valor: 20 },
-};
+// Cupons validados via Supabase RPC (função SQL SECURITY DEFINER — nunca expõe dados do cupom)
 
 const fade: Variants = {
   hidden: { opacity: 0, y: 12 },
@@ -249,25 +246,36 @@ function FlowEvento({
   const descontoCupom = coupon.state === "valid" ? coupon.discount : 0;
   const total = Math.max(0, subtotalCursos + valorJantar - descontoCupom);
 
-  function applyCoupon() {
+  async function applyCoupon() {
     if (!coupon.code) return;
     setCoupon((c: any) => ({ ...c, state: "loading" }));
-    setTimeout(() => {
-      const found = COUPONS[coupon.code.toUpperCase()];
-      if (found) {
+    try {
+      const { data, error } = await supabase.rpc("validar_cupom", {
+        p_codigo: coupon.code.toUpperCase(),
+      });
+      if (error) throw error;
+      if (data?.valido) {
         const discount =
-          found.tipo === "percentual"
-            ? Math.round(subtotalCursos * (found.valor / 100))
-            : found.valor;
+          data.tipo === "percentual"
+            ? Math.round(subtotalCursos * (data.valor / 100))
+            : Number(data.valor);
         const label =
-          found.tipo === "percentual"
-            ? `${found.valor}% de desconto nos cursos`
-            : `R$ ${found.valor.toFixed(2).replace(".", ",")} de desconto`;
+          data.tipo === "percentual"
+            ? `${data.valor}% de desconto nos cursos`
+            : `R$ ${Number(data.valor).toFixed(2).replace(".", ",")} de desconto`;
         setCoupon((c: any) => ({ ...c, state: "valid", discount, label }));
       } else {
-        setCoupon((c: any) => ({ ...c, state: "invalid", discount: 0, label: "" }));
+        setCoupon((c: any) => ({
+          ...c,
+          state: "invalid",
+          discount: 0,
+          label: data?.mensagem ?? "Cupom inválido ou já utilizado",
+        }));
       }
-    }, 900);
+    } catch (e) {
+      console.error("[cupom]", e);
+      setCoupon((c: any) => ({ ...c, state: "invalid", discount: 0, label: "" }));
+    }
   }
 
   function handleContinuar() {
