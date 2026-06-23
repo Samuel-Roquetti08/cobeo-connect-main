@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useSearch } from "@tanstack/react-router";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { StatusBadge } from "@/components/admin/StatusBadge";
 import { useMemo, useState } from "react";
@@ -13,8 +13,27 @@ import {
 } from "@/lib/api/adminTypes";
 import { toast } from "sonner";
 
+// Search params que o dashboard usa para abrir esta página já filtrada.
+// Ex.: /admin/inscritos?status=pago  ou  /admin/inscritos?jantar=com
+interface InscritosSearch {
+  status?: StatusPagamento;
+  jantar?: "com" | "sem";
+  cupom?: "com" | "sem";
+}
+
+const VALID_STATUS: StatusPagamento[] = ["pago", "pendente", "cancelado", "reembolsado", "expirado"];
+
 export const Route = createFileRoute("/admin/inscritos")({
   head: () => ({ meta: [{ title: "Inscritos · Admin · II COBEO" }] }),
+  validateSearch: (search: Record<string, unknown>): InscritosSearch => {
+    const out: InscritosSearch = {};
+    if (typeof search.status === "string" && VALID_STATUS.includes(search.status as StatusPagamento)) {
+      out.status = search.status as StatusPagamento;
+    }
+    if (search.jantar === "com" || search.jantar === "sem") out.jantar = search.jantar;
+    if (search.cupom === "com" || search.cupom === "sem") out.cupom = search.cupom;
+    return out;
+  },
   component: () => (
     <AdminShell>
       <InscritosPage />
@@ -27,12 +46,14 @@ const STATUS_OPTS: (StatusPagamento | "Todos")[] = [
 ];
 
 function InscritosPage() {
+  const search = useSearch({ from: "/admin/inscritos" });
   const { data: inscritos, isLoading, isError, error, refetch } = useInscritos();
 
+
   const [q, setQ] = useState("");
-  const [statusFilter, setStatusFilter] = useState<StatusPagamento | "Todos">("Todos");
-  const [cupomFilter, setCupomFilter] = useState<"todos" | "com" | "sem">("todos");
-  const [jantarFilter, setJantarFilter] = useState<"todos" | "com" | "sem">("todos");
+  const [statusFilter, setStatusFilter] = useState<StatusPagamento | "Todos">(search.status ?? "Todos");
+  const [cupomFilter, setCupomFilter] = useState<"todos" | "com" | "sem">(search.cupom ?? "todos");
+  const [jantarFilter, setJantarFilter] = useState<"todos" | "com" | "sem">(search.jantar ?? "todos");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [page, setPage] = useState(1);
