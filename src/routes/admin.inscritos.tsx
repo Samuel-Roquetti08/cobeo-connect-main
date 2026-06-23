@@ -2,8 +2,15 @@ import { createFileRoute } from "@tanstack/react-router";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { StatusBadge } from "@/components/admin/StatusBadge";
 import { useMemo, useState } from "react";
-import { Search, Download, Eye, ChevronDown, ChevronLeft, ChevronRight, X } from "lucide-react";
-import { inscritos, INGRESSO_LABELS, type Inscrito, type Status } from "@/data/mockAdmin";
+import {
+  Search, Download, Eye, ChevronDown, ChevronLeft, ChevronRight, X, Loader2,
+  AlertCircle, RefreshCw,
+} from "lucide-react";
+import { useInscritos } from "@/lib/api/adminHooks";
+import {
+  type Inscrito, type StatusPagamento,
+  STATUS_LABELS, CATEGORIA_LABELS, JANTAR_LABELS,
+} from "@/lib/api/adminTypes";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/admin/inscritos")({
@@ -15,12 +22,17 @@ export const Route = createFileRoute("/admin/inscritos")({
   ),
 });
 
-const STATUS_OPTS: (Status | "Todos")[] = ["Todos", "Confirmado", "Pendente", "Cancelado"];
+const STATUS_OPTS: (StatusPagamento | "Todos")[] = [
+  "Todos", "pago", "pendente", "cancelado", "reembolsado", "expirado",
+];
 
 function InscritosPage() {
+  const { data: inscritos, isLoading, isError, error, refetch } = useInscritos();
+
   const [q, setQ] = useState("");
-  const [statusFilter, setStatusFilter] = useState<Status | "Todos">("Todos");
+  const [statusFilter, setStatusFilter] = useState<StatusPagamento | "Todos">("Todos");
   const [cupomFilter, setCupomFilter] = useState<"todos" | "com" | "sem">("todos");
+  const [jantarFilter, setJantarFilter] = useState<"todos" | "com" | "sem">("todos");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [page, setPage] = useState(1);
@@ -28,35 +40,101 @@ function InscritosPage() {
   const [selected, setSelected] = useState<Inscrito | null>(null);
   const [analysisOpen, setAnalysisOpen] = useState(true);
 
+  const all = inscritos ?? [];
+
   const filtered = useMemo(() => {
-    return inscritos.filter((r) => {
+    return all.filter((r) => {
       if (q) {
         const s = q.toLowerCase();
         if (!r.nome.toLowerCase().includes(s) && !r.email.toLowerCase().includes(s)) return false;
       }
       if (statusFilter !== "Todos" && r.status !== statusFilter) return false;
-      if (cupomFilter === "com" && !r.cupom) return false;
-      if (cupomFilter === "sem" && r.cupom) return false;
-      if (from && new Date(r.dataInscricao) < new Date(from)) return false;
-      if (to && new Date(r.dataInscricao) > new Date(to + "T23:59:59")) return false;
+      if (cupomFilter === "com" && !r.cupomCodigo) return false;
+      if (cupomFilter === "sem" && r.cupomCodigo) return false;
+      if (jantarFilter === "com" && !r.jantarOpcao) return false;
+      if (jantarFilter === "sem" && r.jantarOpcao) return false;
+      if (from && new Date(r.createdAt) < new Date(from)) return false;
+      if (to && new Date(r.createdAt) > new Date(to + "T23:59:59")) return false;
       return true;
     });
-  }, [q, statusFilter, cupomFilter, from, to]);
+  }, [all, q, statusFilter, cupomFilter, jantarFilter, from, to]);
+
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const pageRows = filtered.slice((page - 1) * pageSize, page * pageSize);
 
-  const comCupom = filtered.filter((r) => r.cupom).length;
-  const confirmados = filtered.filter((r) => r.status === "Confirmado").length;
+  const comCupom = filtered.filter((r) => r.cupomCodigo).length;
+  const confirmados = filtered.filter((r) => r.status === "pago").length;
   const byDay: Record<string, number> = {};
   filtered.forEach((r) => {
-    const d = new Date(r.dataInscricao).toLocaleDateString("pt-BR");
+    const d = new Date(r.createdAt).toLocaleDateString("pt-BR");
     byDay[d] = (byDay[d] || 0) + 1;
   });
   const pico = Object.entries(byDay).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "—";
 
-  function exportExcel() {
-    toast.success("Exportação iniciada", { description: "O arquivo .xlsx será baixado em instantes." });
+  async function exportExcel() {
+    if (filtered.length === 0) {
+      toast.error("Nada para exportar com os filtros atuais.");
+      return;
+    }
+    try {
+      // import dinâmico — só carrega o SheetJS quando o admin clica em exportar
+      const XLSX = await import("xlsx");
+      const rows = filtered.map((r) => ({
+        "Código": r.codigoInscricao ?? "—",
+        "Nome": r.nome,
+        "E-mail": r.email,
+        "Telefone": r.telefone,
+        "WhatsApp": r.whatsapp,
+        "Categoria": r.categoria ? CATEGORIA_LABELS[r.categoria] : "—",
+        "Cursos": r.cursos.map((c) => c.curso_titulo).join(" | "),
+        "Qtd. Cursos": r.cursos.length,
+        "Jantar": r.jantarOpcao ? JANTAR_LABELS[r.jantarOpcao] : "—",
+        "Cupom": r.cupomCodigo ?? "—",
+        "Desconto": r.descontoCupom,
+        "Valor Total": r.valorTotal,
+        "Status": STATUS_LABELS[r.status],
+        "Pagamento": r.metodoPagamento ?? "—",
+        "Data": new Date(r.createdAt).toLocaleString("pt-BR"),
+        "Presença": r.presenca ? "Sim" : "Não",
+      }));
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Inscritos");
+      XLSX.writeFile(wb, `cobeo-inscritos-${new Date().toISOString().slice(0, 10)}.xlsx`);
+      toast.success("Exportação concluída", { description: `${filtered.length} inscritos exportados.` });
+    } catch (e) {
+      toast.error("Erro ao exportar", { description: "Verifique se a biblioteca xlsx está instalada." });
+      console.error(e);
+    }
+  }
+
+  // ── Estados de carregamento e erro ──────────────────────────────────────────
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-3 py-24 text-[#6b6b6b]">
+        <Loader2 className="h-8 w-8 animate-spin text-[#731111]" />
+        <p className="text-sm">Carregando inscritos...</p>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-3 py-24 text-center">
+        <AlertCircle className="h-10 w-10 text-red-500" />
+        <p className="font-semibold text-[#1a1a1a]">Não foi possível carregar os inscritos</p>
+        <p className="max-w-md text-[13px] text-[#6b6b6b]">
+          {(error as Error)?.message ?? "Erro desconhecido ao consultar o banco."}
+        </p>
+        <button
+          onClick={() => refetch()}
+          className="mt-2 flex items-center gap-2 rounded-md bg-[#731111] px-4 py-2 text-sm font-medium text-white hover:bg-[#8a1515]"
+        >
+          <RefreshCw className="h-4 w-4" /> Tentar novamente
+        </button>
+      </div>
+    );
   }
 
   return (
@@ -78,9 +156,9 @@ function InscritosPage() {
             <div className="mt-4 space-y-2 text-[12px]">
               <ChipRow
                 label="Status:"
-                options={STATUS_OPTS.map((s) => ({ id: s, label: s }))}
+                options={STATUS_OPTS.map((s) => ({ id: s, label: s === "Todos" ? "Todos" : STATUS_LABELS[s as StatusPagamento] }))}
                 active={statusFilter}
-                onChange={(v) => { setStatusFilter(v as Status | "Todos"); setPage(1); }}
+                onChange={(v) => { setStatusFilter(v as StatusPagamento | "Todos"); setPage(1); }}
               />
               <ChipRow
                 label="Cupom:"
@@ -91,6 +169,16 @@ function InscritosPage() {
                 ]}
                 active={cupomFilter}
                 onChange={(v) => { setCupomFilter(v as typeof cupomFilter); setPage(1); }}
+              />
+              <ChipRow
+                label="Jantar:"
+                options={[
+                  { id: "todos", label: "Todos" },
+                  { id: "com", label: "Com jantar" },
+                  { id: "sem", label: "Sem jantar" },
+                ]}
+                active={jantarFilter}
+                onChange={(v) => { setJantarFilter(v as typeof jantarFilter); setPage(1); }}
               />
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-[#6b6b6b]">Período:</span>
@@ -119,42 +207,53 @@ function InscritosPage() {
             <thead className="bg-[#f3f0ee] text-left text-[10px] font-semibold uppercase tracking-[0.05em] text-[#6b6b6b]">
               <tr>
                 <th className="px-4 py-3">#</th>
+                <th className="px-4 py-3">Código</th>
                 <th className="px-4 py-3">Nome</th>
                 <th className="px-4 py-3">Email</th>
-                <th className="px-4 py-3">Telefone</th>
-                <th className="px-4 py-3">WhatsApp</th>
-                <th className="px-4 py-3">Data</th>
-                <th className="px-4 py-3">Ingresso</th>
+                <th className="px-4 py-3">Categoria</th>
+                <th className="px-4 py-3">Cursos</th>
+                <th className="px-4 py-3">Jantar</th>
                 <th className="px-4 py-3">Cupom</th>
-                <th className="px-4 py-3">Desconto</th>
+                <th className="px-4 py-3">Total</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3 text-right">Ações</th>
               </tr>
             </thead>
             <tbody>
               {pageRows.length === 0 ? (
-                <tr><td colSpan={10} className="px-4 py-16 text-center text-[#6b6b6b]">Nenhum inscrito encontrado.</td></tr>
+                <tr><td colSpan={11} className="px-4 py-16 text-center text-[#6b6b6b]">Nenhum inscrito encontrado.</td></tr>
               ) : pageRows.map((r, i) => (
-                <tr key={r.id} className="border-t border-[#f0eceb] hover:bg-[#faf8f7]">
+                <tr key={r.pedidoId} className="border-t border-[#f0eceb] hover:bg-[#faf8f7]">
                   <td className="px-4 py-3 text-[12px] text-[#6b6b6b]">{(page - 1) * pageSize + i + 1}</td>
+                  <td className="px-4 py-3">
+                    {r.codigoInscricao
+                      ? <code className="rounded bg-[#f3f0ee] px-2 py-0.5 font-mono text-[11px] text-[#731111]">{r.codigoInscricao}</code>
+                      : <span className="text-[#6b6b6b]">—</span>}
+                  </td>
                   <td className="px-4 py-3 font-medium text-[#1a1a1a]">{r.nome}</td>
                   <td className="px-4 py-3 text-[#6b6b6b]">{r.email}</td>
-                  <td className="px-4 py-3 text-[#6b6b6b]">{r.telefone}</td>
-                  <td className="px-4 py-3 text-[#6b6b6b]">{r.whatsapp}</td>
-                  <td className="px-4 py-3 text-[12px] text-[#6b6b6b]">
-                    {new Date(r.dataInscricao).toLocaleDateString("pt-BR")}
+                  <td className="px-4 py-3">
+                    <span className="rounded-full bg-[#f3f0ee] px-2 py-0.5 text-[11px] font-medium text-[#731111]">
+                      {r.categoria ? CATEGORIA_LABELS[r.categoria] : "—"}
+                    </span>
                   </td>
                   <td className="px-4 py-3">
-                    {r.cupom ? (
-                      <code className="rounded bg-[#f3f0ee] px-2 py-0.5 font-mono text-[11px] text-[#731111]">{r.cupom}</code>
-                    ) : <span className="text-[#6b6b6b]">—</span>}
+                    <span className="font-medium text-[#1a1a1a]">{r.cursos.length}</span>
+                    <span className="text-[11px] text-[#6b6b6b]"> curso{r.cursos.length !== 1 ? "s" : ""}</span>
+                  </td>
+                  <td className="px-4 py-3 text-[12px]">
+                    {r.jantarOpcao
+                      ? <span className="text-[#731111]">{r.jantarOpcao === "com_restricao" ? "Com restr." : "Sem restr."}</span>
+                      : <span className="text-[#6b6b6b]">—</span>}
                   </td>
                   <td className="px-4 py-3">
-                      <span className="rounded-full bg-[#f3f0ee] px-2 py-0.5 font-body text-[11px] font-medium text-[#731111]">
-                        {INGRESSO_LABELS[r.tipoIngresso]}
-                      </span>
-                    </td>
-                  <td className="px-4 py-3 text-[#6b6b6b]">{r.descontoLabel}</td>
+                    {r.cupomCodigo
+                      ? <code className="rounded bg-[#f3f0ee] px-2 py-0.5 font-mono text-[11px] text-[#731111]">{r.cupomCodigo}</code>
+                      : <span className="text-[#6b6b6b]">—</span>}
+                  </td>
+                  <td className="px-4 py-3 font-medium text-[#1a1a1a]">
+                    R$ {r.valorTotal.toFixed(2).replace(".", ",")}
+                  </td>
                   <td className="px-4 py-3"><StatusBadge status={r.status} /></td>
                   <td className="px-4 py-3 text-right">
                     <button onClick={() => setSelected(r)} className="rounded p-1.5 text-[#6b6b6b] hover:bg-[#f3f0ee] hover:text-[#731111]" aria-label="Ver">
@@ -293,16 +392,40 @@ function DetailDrawer({ item, onClose }: { item: Inscrito; onClose: () => void }
             <KV k="E-mail" v={item.email} />
             <KV k="Telefone" v={item.telefone} />
             <KV k="WhatsApp" v={item.whatsapp} />
+            <KV k="Categoria" v={item.categoria ? CATEGORIA_LABELS[item.categoria] : "—"} />
+            <KV k="Código" v={item.codigoInscricao ?? "—"} />
           </Section>
-          <Section title="Inscrição">
-            <KV k="Data" v={new Date(item.dataInscricao).toLocaleString("pt-BR")} />
-            <KV k="Cupom" v={item.cupom ?? "—"} />
-            <KV k="Categoria do cupom" v={item.cupomCategoria ?? "—"} />
-            <KV k="Desconto aplicado" v={item.descontoLabel} />
+          <Section title={`Cursos (${item.cursos.length})`}>
+            {item.cursos.length === 0
+              ? <div className="text-[12px] text-[#6b6b6b]">Nenhum curso.</div>
+              : <ul className="space-y-1.5 text-[13px] text-[#1a1a1a]">
+                  {item.cursos.map((c) => (
+                    <li key={c.id} className="flex justify-between gap-3">
+                      <span>· {c.curso_titulo}</span>
+                      <span className="shrink-0 text-[#6b6b6b]">R$ {c.valor.toFixed(2).replace(".", ",")}</span>
+                    </li>
+                  ))}
+                </ul>}
           </Section>
+          {item.jantarOpcao && (
+            <Section title="Jantar de Encerramento">
+              <KV k="Opção" v={JANTAR_LABELS[item.jantarOpcao]} />
+              <KV k="Valor" v={`R$ ${item.valorJantar.toFixed(2).replace(".", ",")}`} />
+            </Section>
+          )}
           <Section title="Pagamento">
-            <KV k="Valor pago" v={`R$ ${item.valorPago.toFixed(2).replace(".", ",")}`} />
-            <KV k="Status" v={item.status} />
+            <KV k="Cursos" v={`R$ ${item.valorCursos.toFixed(2).replace(".", ",")}`} />
+            {item.valorJantar > 0 && <KV k="Jantar" v={`R$ ${item.valorJantar.toFixed(2).replace(".", ",")}`} />}
+            {item.valorTrabalho > 0 && <KV k="Trabalho" v={`R$ ${item.valorTrabalho.toFixed(2).replace(".", ",")}`} />}
+            {item.descontoCupom > 0 && <KV k="Desconto cupom" v={`- R$ ${item.descontoCupom.toFixed(2).replace(".", ",")}`} />}
+            <KV k="Total" v={`R$ ${item.valorTotal.toFixed(2).replace(".", ",")}`} />
+            <KV k="Método" v={item.metodoPagamento ?? "—"} />
+            <KV k="Status" v={STATUS_LABELS[item.status]} />
+            <KV k="Pago em" v={item.pagoEm ? new Date(item.pagoEm).toLocaleString("pt-BR") : "—"} />
+          </Section>
+          <Section title="Presença">
+            <KV k="Check-in" v={item.presenca ? "Sim" : "Não"} />
+            <KV k="Primeiro check-in" v={item.primeiroCheckinEm ? new Date(item.primeiroCheckinEm).toLocaleString("pt-BR") : "—"} />
           </Section>
         </div>
         <footer className="border-t border-[#f0eceb] p-4">
