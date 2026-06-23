@@ -2,8 +2,10 @@ import { createFileRoute } from "@tanstack/react-router";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { StatusBadge } from "@/components/admin/StatusBadge";
 import { useMemo, useState } from "react";
-import { Search, Download, Eye, X, Paperclip } from "lucide-react";
-import { trabalhos, type Trabalho, type Status } from "@/data/mockAdmin";
+import { Search, Download, Eye, X, Paperclip, Loader2, AlertCircle, RefreshCw } from "lucide-react";
+import { useTrabalhos } from "@/lib/api/adminHooks";
+import { getTrabalhoDownloadUrl } from "@/lib/api/adminData";
+import { type Trabalho, type StatusPagamento, STATUS_LABELS } from "@/lib/api/adminTypes";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/admin/trabalhos")({
@@ -15,25 +17,97 @@ export const Route = createFileRoute("/admin/trabalhos")({
   ),
 });
 
+const STATUS_OPTS: (StatusPagamento | "Todos")[] = ["Todos", "pago", "pendente", "cancelado"];
+
+// Baixa o PDF do trabalho gerando uma URL assinada temporária (bucket privado)
+async function baixarArquivo(t: Trabalho) {
+  if (!t.arquivoPath) {
+    toast.error("Este trabalho não tem arquivo anexado.");
+    return;
+  }
+  try {
+    const url = await getTrabalhoDownloadUrl(t.arquivoPath);
+    window.open(url, "_blank");
+  } catch (e) {
+    toast.error("Erro ao gerar link de download", { description: (e as Error)?.message });
+  }
+}
+
 function TrabalhosPage() {
+  const { data: trabalhos, isLoading, isError, error, refetch } = useTrabalhos();
+
   const [q, setQ] = useState("");
-  const [statusFilter, setStatusFilter] = useState<Status | "Todos">("Todos");
+  const [statusFilter, setStatusFilter] = useState<StatusPagamento | "Todos">("Todos");
   const [arquivoFilter, setArquivoFilter] = useState<"todos" | "com" | "sem">("todos");
   const [selected, setSelected] = useState<Trabalho | null>(null);
   const [hoverCoautores, setHoverCoautores] = useState<string | null>(null);
 
+  const all = trabalhos ?? [];
+
   const filtered = useMemo(() => {
-    return trabalhos.filter((t) => {
+    return all.filter((t) => {
       if (q) {
         const s = q.toLowerCase();
         if (!t.titulo.toLowerCase().includes(s) && !t.responsavel.toLowerCase().includes(s)) return false;
       }
-      if (statusFilter !== "Todos" && t.statusPagamento !== statusFilter) return false;
-      if (arquivoFilter === "com" && !t.arquivo) return false;
-      if (arquivoFilter === "sem" && t.arquivo) return false;
+      if (statusFilter !== "Todos" && t.status !== statusFilter) return false;
+      if (arquivoFilter === "com" && !t.arquivoPath) return false;
+      if (arquivoFilter === "sem" && t.arquivoPath) return false;
       return true;
     });
-  }, [q, statusFilter, arquivoFilter]);
+  }, [all, q, statusFilter, arquivoFilter]);
+
+  async function exportExcel() {
+    if (filtered.length === 0) {
+      toast.error("Nada para exportar com os filtros atuais.");
+      return;
+    }
+    try {
+      const XLSX = await import("xlsx");
+      const rows = filtered.map((t) => ({
+        "Título": t.titulo,
+        "Responsável": t.responsavel,
+        "E-mail": t.responsavelEmail,
+        "Categoria": t.categoria,
+        "Modalidade": t.modalidade,
+        "Formato": t.formato,
+        "Coautores": t.coautores.join(" | "),
+        "Arquivo": t.arquivoNome ?? "—",
+        "Status": STATUS_LABELS[t.status],
+        "Data": new Date(t.createdAt).toLocaleString("pt-BR"),
+      }));
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Trabalhos");
+      XLSX.writeFile(wb, `cobeo-trabalhos-${new Date().toISOString().slice(0, 10)}.xlsx`);
+      toast.success("Exportação concluída", { description: `${filtered.length} trabalhos exportados.` });
+    } catch (e) {
+      toast.error("Erro ao exportar", { description: "Verifique se a biblioteca xlsx está instalada." });
+      console.error(e);
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-3 py-24 text-[#6b6b6b]">
+        <Loader2 className="h-8 w-8 animate-spin text-[#731111]" />
+        <p className="text-sm">Carregando trabalhos...</p>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-3 py-24 text-center">
+        <AlertCircle className="h-10 w-10 text-red-500" />
+        <p className="font-semibold text-[#1a1a1a]">Não foi possível carregar os trabalhos</p>
+        <p className="max-w-md text-[13px] text-[#6b6b6b]">{(error as Error)?.message}</p>
+        <button onClick={() => refetch()} className="mt-2 flex items-center gap-2 rounded-md bg-[#731111] px-4 py-2 text-sm font-medium text-white hover:bg-[#8a1515]">
+          <RefreshCw className="h-4 w-4" /> Tentar novamente
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -51,8 +125,10 @@ function TrabalhosPage() {
             </div>
             <div className="flex flex-wrap items-center gap-2 text-[12px]">
               <span className="text-[#6b6b6b]">Status:</span>
-              {(["Todos", "Confirmado", "Pendente", "Cancelado"] as const).map((s) => (
-                <Chip key={s} active={statusFilter === s} onClick={() => setStatusFilter(s)}>{s}</Chip>
+              {STATUS_OPTS.map((s) => (
+                <Chip key={s} active={statusFilter === s} onClick={() => setStatusFilter(s)}>
+                  {s === "Todos" ? "Todos" : STATUS_LABELS[s as StatusPagamento]}
+                </Chip>
               ))}
               <span className="ml-3 text-[#6b6b6b]">Arquivo:</span>
               {(["todos", "com", "sem"] as const).map((s) => (
@@ -63,7 +139,7 @@ function TrabalhosPage() {
             </div>
           </div>
           <button
-            onClick={() => toast.success("Exportação iniciada")}
+            onClick={exportExcel}
             className="flex items-center gap-2 rounded-md bg-[#731111] px-4 py-2 text-sm font-medium text-white hover:bg-[#8a1515]"
           >
             <Download className="h-4 w-4" /> Exportar Excel
@@ -81,14 +157,17 @@ function TrabalhosPage() {
                 <th className="px-4 py-3">Responsável</th>
                 <th className="px-4 py-3">Coautores</th>
                 <th className="px-4 py-3">Categoria</th>
+                <th className="px-4 py-3">Modalidade</th>
+                <th className="px-4 py-3">Formato</th>
                 <th className="px-4 py-3">Arquivo</th>
-                <th className="px-4 py-3">Data</th>
-                <th className="px-4 py-3">Status Pgto</th>
+                <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3 text-right">Ações</th>
               </tr>
             </thead>
             <tbody>
-              {filtered.map((t, i) => (
+              {filtered.length === 0 ? (
+                <tr><td colSpan={10} className="px-4 py-16 text-center text-[#6b6b6b]">Nenhum trabalho encontrado.</td></tr>
+              ) : filtered.map((t, i) => (
                 <tr key={t.id} className="border-t border-[#f0eceb] hover:bg-[#faf8f7]">
                   <td className="px-4 py-3 text-[12px] text-[#6b6b6b]">{i + 1}</td>
                   <td className="px-4 py-3 max-w-sm">
@@ -114,27 +193,26 @@ function TrabalhosPage() {
                     )}
                   </td>
                   <td className="px-4 py-3 text-[12px] text-[#6b6b6b]">{t.categoria}</td>
+                  <td className="px-4 py-3 text-[12px] text-[#6b6b6b]">{t.modalidade}</td>
+                  <td className="px-4 py-3 text-[12px] text-[#6b6b6b]">{t.formato}</td>
                   <td className="px-4 py-3">
-                    {t.arquivo ? (
+                    {t.arquivoPath ? (
                       <span className="inline-flex items-center gap-1.5 rounded bg-[#dbeafe] px-2 py-0.5 text-[11px] font-medium text-[#1e40af]">
-                        <Paperclip className="h-3 w-3" /> {t.arquivo.tipo}
+                        <Paperclip className="h-3 w-3" /> PDF
                       </span>
                     ) : (
                       <span className="rounded bg-[#f3f4f6] px-2 py-0.5 text-[11px] text-[#6b7280]">Pendente</span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-[12px] text-[#6b6b6b]">
-                    {new Date(t.dataSubmissao).toLocaleDateString("pt-BR")}
-                  </td>
-                  <td className="px-4 py-3"><StatusBadge status={t.statusPagamento} /></td>
+                  <td className="px-4 py-3"><StatusBadge status={t.status} /></td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex justify-end gap-1">
                       <button onClick={() => setSelected(t)} className="rounded p-1.5 text-[#6b6b6b] hover:bg-[#f3f0ee] hover:text-[#731111]">
                         <Eye className="h-4 w-4" />
                       </button>
                       <button
-                        disabled={!t.arquivo}
-                        onClick={() => toast.success(`Baixando ${t.arquivo?.nome}`)}
+                        disabled={!t.arquivoPath}
+                        onClick={() => baixarArquivo(t)}
                         className="rounded p-1.5 text-[#6b6b6b] enabled:hover:bg-[#f3f0ee] enabled:hover:text-[#731111] disabled:opacity-30"
                       >
                         <Download className="h-4 w-4" />
@@ -175,7 +253,7 @@ function TrabalhoDrawer({ item, onClose }: { item: Trabalho; onClose: () => void
           <div className="pr-6">
             <div className="text-[11px] uppercase tracking-wider text-[#6b6b6b]">Trabalho</div>
             <div className="mt-1 text-base font-semibold text-[#1a1a1a]">{item.titulo}</div>
-            <div className="mt-2"><StatusBadge status={item.statusPagamento} /></div>
+            <div className="mt-2"><StatusBadge status={item.status} /></div>
           </div>
           <button onClick={onClose} className="rounded p-1 text-[#6b6b6b] hover:bg-[#f3f0ee]"><X className="h-5 w-5" /></button>
         </header>
@@ -193,21 +271,23 @@ function TrabalhoDrawer({ item, onClose }: { item: Trabalho; onClose: () => void
           </Sec>
           <Sec title="Dados do Trabalho">
             <KV k="Categoria" v={item.categoria} />
-            <KV k="Data submissão" v={new Date(item.dataSubmissao).toLocaleString("pt-BR")} />
+            <KV k="Modalidade" v={item.modalidade} />
+            <KV k="Formato" v={item.formato} />
+            <KV k="Data submissão" v={new Date(item.createdAt).toLocaleString("pt-BR")} />
             <div className="mt-2 text-[12px] text-[#6b6b6b]">{item.resumo}</div>
           </Sec>
           <Sec title="Arquivo">
-            {item.arquivo ? (
+            {item.arquivoPath ? (
               <div className="flex items-center justify-between text-[13px]">
-                <span className="font-medium text-[#1a1a1a]">{item.arquivo.nome}</span>
-                <button onClick={() => toast.success("Download iniciado")} className="flex items-center gap-1 text-[#731111] hover:underline">
+                <span className="font-medium text-[#1a1a1a]">{item.arquivoNome ?? "arquivo.pdf"}</span>
+                <button onClick={() => baixarArquivo(item)} className="flex items-center gap-1 text-[#731111] hover:underline">
                   <Download className="h-4 w-4" /> Baixar
                 </button>
               </div>
             ) : <div className="text-[12px] text-[#6b6b6b]">Nenhum arquivo anexado.</div>}
           </Sec>
           <Sec title="Pagamento">
-            <KV k="Status" v={item.statusPagamento} />
+            <KV k="Status" v={STATUS_LABELS[item.status]} />
           </Sec>
         </div>
         <footer className="border-t border-[#f0eceb] p-4">
