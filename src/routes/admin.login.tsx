@@ -18,7 +18,7 @@ function AdminLogin() {
     if (ready && user) navigate({ to: "/admin/dashboard" });
   }, [ready, user, navigate]);
 
-  function onSubmit(e: FormEvent<HTMLFormElement>) {
+  async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setErr("");
     setLoading(true);
@@ -26,15 +26,13 @@ function AdminLogin() {
     const email = String(fd.get("email") || "");
     const pass = String(fd.get("pass") || "");
 
-    // Pequeno delay para evitar brute-force visual e feedback de loading
-    setTimeout(() => {
-      if (login(email, pass)) {
-        navigate({ to: "/admin/dashboard" });
-      } else {
-        setErr("E-mail ou senha incorretos.");
-        setLoading(false);
-      }
-    }, 600);
+    const ok = await login(email, pass);
+    if (ok) {
+      navigate({ to: "/admin/dashboard" });
+    } else {
+      setErr("E-mail ou senha incorretos.");
+      setLoading(false);
+    }
   }
 
   return (

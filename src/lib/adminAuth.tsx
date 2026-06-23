@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { supabase } from "./supabaseClient";
 
 interface AdminUser {
   email: string;
@@ -8,42 +9,76 @@ interface AdminUser {
 
 interface AdminAuthCtx {
   user: AdminUser | null;
-  login: (email: string, password: string) => boolean;
-  logout: () => void;
+  login: (email: string, password: string) => Promise<boolean>;
+  logout: () => Promise<void>;
   ready: boolean;
+  error: string | null;
 }
 
 const Ctx = createContext<AdminAuthCtx | null>(null);
 
-const ADMIN_EMAIL = "admin@cobeo.com.br";
-const ADMIN_PASS = "cobeo2025";
+function initialsFrom(email: string) {
+  const namePart = email.split("@")[0] ?? "";
+  const letters = namePart.replace(/[^a-zA-Z]/g, "").slice(0, 2).toUpperCase();
+  return letters || "AD";
+}
 
 export function AdminAuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AdminUser | null>(null);
   const [ready, setReady] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (localStorage.getItem("cobeo_admin_v2") === "1") {
-      setUser({ email: ADMIN_EMAIL, role: "Administrador", initials: "AD" });
-    }
-    setReady(true);
+
+    // Restaura sessão existente
+    supabase.auth.getSession().then(({ data }) => {
+      const email = data.session?.user?.email;
+      if (email) {
+        setUser({ email, role: "Administrador", initials: initialsFrom(email) });
+      }
+      setReady(true);
+    });
+
+    // Escuta mudanças de autenticação (login/logout em outras abas)
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      const email = session?.user?.email;
+      setUser(email ? { email, role: "Administrador", initials: initialsFrom(email) } : null);
+    });
+
+    return () => listener.subscription.unsubscribe();
   }, []);
 
-  function login(email: string, password: string) {
-    if (email.trim().toLowerCase() === ADMIN_EMAIL && password === ADMIN_PASS) {
-      localStorage.setItem("cobeo_admin_v2", "1");
-      setUser({ email: ADMIN_EMAIL, role: "Administrador", initials: "AD" });
-      return true;
+  async function login(email: string, password: string): Promise<boolean> {
+    setError(null);
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: email.trim().toLowerCase(),
+      password,
+    });
+
+    if (error || !data.user) {
+      setError("E-mail ou senha incorretos.");
+      return false;
     }
-    return false;
+
+    setUser({
+      email: data.user.email!,
+      role: "Administrador",
+      initials: initialsFrom(data.user.email!),
+    });
+    return true;
   }
-  function logout() {
-    localStorage.removeItem("cobeo_admin_v2");
+
+  async function logout() {
+    await supabase.auth.signOut();
     setUser(null);
   }
 
-  return <Ctx.Provider value={{ user, login, logout, ready }}>{children}</Ctx.Provider>;
+  return (
+    <Ctx.Provider value={{ user, login, logout, ready, error }}>
+      {children}
+    </Ctx.Provider>
+  );
 }
 
 export function useAdminAuth() {
