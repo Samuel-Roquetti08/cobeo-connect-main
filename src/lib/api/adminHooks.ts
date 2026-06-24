@@ -63,3 +63,12 @@ export function useUpdateConfiguracoes() {
     onSuccess: () => qc.invalidateQueries({ queryKey: adminKeys.config }),
   });
 }
+
+// ─── Check-in e Crachás ──────────────────────────────────────────────────────
+import { getInscritosParaCracha } from "./adminData";
+
+export const crachaKeys = { lista: ["admin", "crachas"] as const };
+
+export function useInscritosCracha() {
+  return useQuery({ queryKey: crachaKeys.lista, queryFn: getInscritosParaCracha });
+}

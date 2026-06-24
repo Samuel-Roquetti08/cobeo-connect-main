@@ -27,11 +27,24 @@ export function Palestrantes() {
               className="group relative rounded-xl border border-border bg-surface px-6 py-8 text-center transition-all duration-300 hover:-translate-y-1 hover:border-primary hover:shadow-[0_8px_32px_rgba(115,17,17,0.12)]"
             >
               <div className="mx-auto h-[100px] w-[100px] rounded-full ring-[3px] ring-primary ring-offset-[3px] ring-offset-background transition-colors group-hover:ring-gold">
-                <img
-                  src={p.foto}
-                  alt={p.nome}
-                  className="h-full w-full rounded-full object-cover"
-                />
+                {p.foto ? (
+                  <img
+                    src={p.foto}
+                    alt={p.nome}
+                    className="h-full w-full rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center rounded-full bg-primary/10 font-display text-2xl font-bold text-primary">
+                    {p.nome
+                      .replace(/^(Prof\.|Profa\.|Dr\.|Dra\.|Me\.|Esp\.)\s*/gi, "")
+                      .split(" ")
+                      .filter(Boolean)
+                      .slice(0, 2)
+                      .map((w) => w[0])
+                      .join("")
+                      .toUpperCase()}
+                  </div>
+                )}
               </div>
               <h3 className="mt-5 font-display text-[18px] font-bold text-foreground">
                 {p.nome}

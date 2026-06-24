@@ -255,3 +255,153 @@ export async function updateConfiguracoes(
     .eq("id", 1);
   if (error) throw error;
 }
+
+// ─── CHECK-IN ────────────────────────────────────────────────────────────────
+// Busca um inscrito pelo código (COBEO-XXXX), nome ou e-mail, trazendo seus
+// cursos e as presenças já registradas. Usado na tela de check-in por curso.
+export interface InscritoCheckin {
+  inscritoId: string;
+  pedidoId: string;
+  nome: string;
+  email: string;
+  codigoInscricao: string;
+  status: StatusPagamento;
+  categoria: CategoriaParticipante | null;
+  cursos: PedidoCurso[];
+  presencas: { curso_ref: string; confirmado_em: string }[];
+}
+
+export async function buscarParaCheckin(termo: string): Promise<InscritoCheckin | null> {
+  const t = termo.trim();
+  if (!t) return null;
+
+  // Tenta primeiro por código exato (caso mais comum — vem do QR Code)
+  let pedidoId: string | null = null;
+  let inscritoRow: { id: string; pedido_id: string; codigo_inscricao: string } | null = null;
+
+  const { data: byCode } = await supabase
+    .from("inscritos")
+    .select("id, pedido_id, codigo_inscricao")
+    .ilike("codigo_inscricao", t)
+    .maybeSingle();
+
+  if (byCode) {
+    inscritoRow = byCode;
+    pedidoId = byCode.pedido_id;
+  } else {
+    // Busca por nome ou e-mail no pedido
+    const { data: pedidoMatch } = await supabase
+      .from("pedidos")
+      .select("id")
+      .eq("tem_inscricao", true)
+      .or(`nome.ilike.%${t}%,email.ilike.%${t}%`)
+      .limit(1)
+      .maybeSingle();
+    if (!pedidoMatch) return null;
+    pedidoId = pedidoMatch.id;
+    const { data: ins } = await supabase
+      .from("inscritos")
+      .select("id, pedido_id, codigo_inscricao")
+      .eq("pedido_id", pedidoId)
+      .maybeSingle();
+    if (!ins) return null;
+    inscritoRow = ins;
+  }
+
+  if (!inscritoRow || !pedidoId) return null;
+
+  // Dados do pedido
+  const { data: pedido } = await supabase
+    .from("pedidos")
+    .select("nome, email, status, categoria")
+    .eq("id", pedidoId)
+    .single();
+
+  // Cursos comprados
+  const { data: cursos } = await supabase
+    .from("pedido_cursos")
+    .select("id, curso_ref, curso_titulo, valor")
+    .eq("pedido_id", pedidoId);
+
+  // Presenças já registradas
+  const { data: presencas } = await supabase
+    .from("presencas")
+    .select("curso_ref, confirmado_em")
+    .eq("inscrito_id", inscritoRow.id);
+
+  return {
+    inscritoId: inscritoRow.id,
+    pedidoId,
+    nome: pedido?.nome ?? "—",
+    email: pedido?.email ?? "—",
+    codigoInscricao: inscritoRow.codigo_inscricao,
+    status: (pedido?.status as StatusPagamento) ?? "pendente",
+    categoria: (pedido?.categoria as CategoriaParticipante) ?? null,
+    cursos: (cursos ?? []).map((c) => ({ id: c.id, curso_ref: c.curso_ref, curso_titulo: c.curso_titulo, valor: Number(c.valor) })),
+    presencas: (presencas ?? []).map((p) => ({ curso_ref: p.curso_ref, confirmado_em: p.confirmado_em })),
+  };
+}
+
+// Registra presença de um inscrito em um curso específico.
+// O trigger do banco atualiza inscritos.presenca = true automaticamente.
+export async function registrarPresenca(
+  inscritoId: string, cursoRef: string, confirmadoPor: string,
+): Promise<void> {
+  const { error } = await supabase
+    .from("presencas")
+    .insert({ inscrito_id: inscritoId, curso_ref: cursoRef, confirmado_por: confirmadoPor });
+  if (error) throw error;
+}
+
+// ─── CRACHÁS ─────────────────────────────────────────────────────────────────
+// Lista inscritos pagos com código e cursos, para gerar crachás com QR Code.
+export interface CrachaInscrito {
+  inscritoId: string;
+  nome: string;
+  email: string;
+  codigoInscricao: string;
+  categoria: CategoriaParticipante | null;
+  cursos: string[];
+}
+
+export async function getInscritosParaCracha(): Promise<CrachaInscrito[]> {
+  const { data: pedidos } = await supabase
+    .from("pedidos")
+    .select("id, nome, email, categoria")
+    .eq("tem_inscricao", true)
+    .eq("status", "pago")
+    .order("nome");
+  if (!pedidos || pedidos.length === 0) return [];
+
+  const ids = pedidos.map((p) => p.id);
+  const { data: inscritos } = await supabase
+    .from("inscritos")
+    .select("id, pedido_id, codigo_inscricao")
+    .in("pedido_id", ids);
+  const { data: cursos } = await supabase
+    .from("pedido_cursos")
+    .select("pedido_id, curso_titulo")
+    .in("pedido_id", ids);
+
+  const insPorPedido = new Map((inscritos ?? []).map((i) => [i.pedido_id, i]));
+  const cursosPorPedido = new Map<string, string[]>();
+  for (const c of cursos ?? []) {
+    const arr = cursosPorPedido.get(c.pedido_id) ?? [];
+    arr.push(c.curso_titulo);
+    cursosPorPedido.set(c.pedido_id, arr);
+  }
+
+  return pedidos
+    .filter((p) => insPorPedido.has(p.id))
+    .map((p) => {
+      const ins = insPorPedido.get(p.id)!;
+      return {
+        inscritoId: ins.id,
+        nome: p.nome,
+        email: p.email,
+        codigoInscricao: ins.codigo_inscricao,
+        categoria: (p.categoria as CategoriaParticipante) ?? null,
+        cursos: cursosPorPedido.get(p.id) ?? [],
+      };
+    });
+}
