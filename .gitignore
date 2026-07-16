@@ -24,6 +24,10 @@ dist-ssr
 .env
 .env.*
 !.env.example
+# .env.production tem só valores PÚBLICOS por design (anon key protegida por
+# RLS, MP public key) — comitado de propósito porque o Cloudflare Workers
+# Builds não repassa "Build variables" do painel para o processo do Vite.
+!.env.production
 
 # Supabase CLI
 supabase/.temp/
