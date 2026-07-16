@@ -11,6 +11,9 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
+import { Route as InscricaoSucessoRouteImport } from './routes/inscricao.sucesso'
+import { Route as InscricaoPendenteRouteImport } from './routes/inscricao.pendente'
+import { Route as InscricaoFalhaRouteImport } from './routes/inscricao.falha'
 import { Route as AdminTrabalhosRouteImport } from './routes/admin.trabalhos'
 import { Route as AdminLoginRouteImport } from './routes/admin.login'
 import { Route as AdminInscritosRouteImport } from './routes/admin.inscritos'
@@ -20,6 +23,7 @@ import { Route as AdminCuponsRouteImport } from './routes/admin.cupons'
 import { Route as AdminCrachasRouteImport } from './routes/admin.crachas'
 import { Route as AdminConfiguracoesRouteImport } from './routes/admin.configuracoes'
 import { Route as AdminCheckinRouteImport } from './routes/admin.checkin'
+import { Route as AdminCertificadosRouteImport } from './routes/admin.certificados'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -29,6 +33,21 @@ const IndexRoute = IndexRouteImport.update({
 const AdminIndexRoute = AdminIndexRouteImport.update({
   id: '/admin/',
   path: '/admin/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InscricaoSucessoRoute = InscricaoSucessoRouteImport.update({
+  id: '/inscricao/sucesso',
+  path: '/inscricao/sucesso',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InscricaoPendenteRoute = InscricaoPendenteRouteImport.update({
+  id: '/inscricao/pendente',
+  path: '/inscricao/pendente',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InscricaoFalhaRoute = InscricaoFalhaRouteImport.update({
+  id: '/inscricao/falha',
+  path: '/inscricao/falha',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminTrabalhosRoute = AdminTrabalhosRouteImport.update({
@@ -76,9 +95,15 @@ const AdminCheckinRoute = AdminCheckinRouteImport.update({
   path: '/admin/checkin',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminCertificadosRoute = AdminCertificadosRouteImport.update({
+  id: '/admin/certificados',
+  path: '/admin/certificados',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin/certificados': typeof AdminCertificadosRoute
   '/admin/checkin': typeof AdminCheckinRoute
   '/admin/configuracoes': typeof AdminConfiguracoesRoute
   '/admin/crachas': typeof AdminCrachasRoute
@@ -88,10 +113,14 @@ export interface FileRoutesByFullPath {
   '/admin/inscritos': typeof AdminInscritosRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/trabalhos': typeof AdminTrabalhosRoute
+  '/inscricao/falha': typeof InscricaoFalhaRoute
+  '/inscricao/pendente': typeof InscricaoPendenteRoute
+  '/inscricao/sucesso': typeof InscricaoSucessoRoute
   '/admin/': typeof AdminIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/admin/certificados': typeof AdminCertificadosRoute
   '/admin/checkin': typeof AdminCheckinRoute
   '/admin/configuracoes': typeof AdminConfiguracoesRoute
   '/admin/crachas': typeof AdminCrachasRoute
@@ -101,11 +130,15 @@ export interface FileRoutesByTo {
   '/admin/inscritos': typeof AdminInscritosRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/trabalhos': typeof AdminTrabalhosRoute
+  '/inscricao/falha': typeof InscricaoFalhaRoute
+  '/inscricao/pendente': typeof InscricaoPendenteRoute
+  '/inscricao/sucesso': typeof InscricaoSucessoRoute
   '/admin': typeof AdminIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin/certificados': typeof AdminCertificadosRoute
   '/admin/checkin': typeof AdminCheckinRoute
   '/admin/configuracoes': typeof AdminConfiguracoesRoute
   '/admin/crachas': typeof AdminCrachasRoute
@@ -115,12 +148,16 @@ export interface FileRoutesById {
   '/admin/inscritos': typeof AdminInscritosRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/trabalhos': typeof AdminTrabalhosRoute
+  '/inscricao/falha': typeof InscricaoFalhaRoute
+  '/inscricao/pendente': typeof InscricaoPendenteRoute
+  '/inscricao/sucesso': typeof InscricaoSucessoRoute
   '/admin/': typeof AdminIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/admin/certificados'
     | '/admin/checkin'
     | '/admin/configuracoes'
     | '/admin/crachas'
@@ -130,10 +167,14 @@ export interface FileRouteTypes {
     | '/admin/inscritos'
     | '/admin/login'
     | '/admin/trabalhos'
+    | '/inscricao/falha'
+    | '/inscricao/pendente'
+    | '/inscricao/sucesso'
     | '/admin/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/admin/certificados'
     | '/admin/checkin'
     | '/admin/configuracoes'
     | '/admin/crachas'
@@ -143,10 +184,14 @@ export interface FileRouteTypes {
     | '/admin/inscritos'
     | '/admin/login'
     | '/admin/trabalhos'
+    | '/inscricao/falha'
+    | '/inscricao/pendente'
+    | '/inscricao/sucesso'
     | '/admin'
   id:
     | '__root__'
     | '/'
+    | '/admin/certificados'
     | '/admin/checkin'
     | '/admin/configuracoes'
     | '/admin/crachas'
@@ -156,11 +201,15 @@ export interface FileRouteTypes {
     | '/admin/inscritos'
     | '/admin/login'
     | '/admin/trabalhos'
+    | '/inscricao/falha'
+    | '/inscricao/pendente'
+    | '/inscricao/sucesso'
     | '/admin/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminCertificadosRoute: typeof AdminCertificadosRoute
   AdminCheckinRoute: typeof AdminCheckinRoute
   AdminConfiguracoesRoute: typeof AdminConfiguracoesRoute
   AdminCrachasRoute: typeof AdminCrachasRoute
@@ -170,6 +219,9 @@ export interface RootRouteChildren {
   AdminInscritosRoute: typeof AdminInscritosRoute
   AdminLoginRoute: typeof AdminLoginRoute
   AdminTrabalhosRoute: typeof AdminTrabalhosRoute
+  InscricaoFalhaRoute: typeof InscricaoFalhaRoute
+  InscricaoPendenteRoute: typeof InscricaoPendenteRoute
+  InscricaoSucessoRoute: typeof InscricaoSucessoRoute
   AdminIndexRoute: typeof AdminIndexRoute
 }
 
@@ -187,6 +239,27 @@ declare module '@tanstack/react-router' {
       path: '/admin'
       fullPath: '/admin/'
       preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/inscricao/sucesso': {
+      id: '/inscricao/sucesso'
+      path: '/inscricao/sucesso'
+      fullPath: '/inscricao/sucesso'
+      preLoaderRoute: typeof InscricaoSucessoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/inscricao/pendente': {
+      id: '/inscricao/pendente'
+      path: '/inscricao/pendente'
+      fullPath: '/inscricao/pendente'
+      preLoaderRoute: typeof InscricaoPendenteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/inscricao/falha': {
+      id: '/inscricao/falha'
+      path: '/inscricao/falha'
+      fullPath: '/inscricao/falha'
+      preLoaderRoute: typeof InscricaoFalhaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/trabalhos': {
@@ -252,11 +325,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminCheckinRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/certificados': {
+      id: '/admin/certificados'
+      path: '/admin/certificados'
+      fullPath: '/admin/certificados'
+      preLoaderRoute: typeof AdminCertificadosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminCertificadosRoute: AdminCertificadosRoute,
   AdminCheckinRoute: AdminCheckinRoute,
   AdminConfiguracoesRoute: AdminConfiguracoesRoute,
   AdminCrachasRoute: AdminCrachasRoute,
@@ -266,6 +347,9 @@ const rootRouteChildren: RootRouteChildren = {
   AdminInscritosRoute: AdminInscritosRoute,
   AdminLoginRoute: AdminLoginRoute,
   AdminTrabalhosRoute: AdminTrabalhosRoute,
+  InscricaoFalhaRoute: InscricaoFalhaRoute,
+  InscricaoPendenteRoute: InscricaoPendenteRoute,
+  InscricaoSucessoRoute: InscricaoSucessoRoute,
   AdminIndexRoute: AdminIndexRoute,
 }
 export const routeTree = rootRouteImport

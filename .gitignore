@@ -20,6 +20,17 @@ dist-ssr
 .wrangler/
 .dev.vars
 
+# Environment variables (credenciais reais — nunca commitar)
+.env
+.env.*
+!.env.example
+
+# Supabase CLI
+supabase/.temp/
+
+# Handoffs contendo credenciais reais em texto plano — nunca versionar
+HANDOFF_CLAUDE_CODE_COBEO.md
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

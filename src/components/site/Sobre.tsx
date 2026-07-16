@@ -60,7 +60,7 @@ export function Sobre() {
               variants={fadeUp}
               className="flex items-center gap-3 pt-2 font-body text-sm font-medium text-foreground"
             >
-              <span>24+ Palestrantes</span>
+              <span>13+ Palestrantes</span>
               <span className="inline-block h-1.5 w-1.5 rounded-full bg-gold" />
               <span>32h de Conteúdo</span>
             </motion.div>

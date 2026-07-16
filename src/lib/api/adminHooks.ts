@@ -9,6 +9,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   getInscritos, getTrabalhos, getCupons, createCupom, deleteCupom,
   getConfiguracoes, updateConfiguracoes,
+  getElegiveisCertificado, marcarCertificadosEnviados,
 } from "./adminData";
 import type { CupomCategoria } from "./adminTypes";
 
@@ -18,6 +19,7 @@ export const adminKeys = {
   trabalhos: ["admin", "trabalhos"] as const,
   cupons: ["admin", "cupons"] as const,
   config: ["admin", "config"] as const,
+  certificados: ["admin", "certificados"] as const,
 };
 
 export function useInscritos() {
@@ -60,6 +62,19 @@ export function useUpdateConfiguracoes() {
   return useMutation({
     mutationFn: (patch: Partial<{ inscricoesBloqueadas: boolean; jantarBloqueado: boolean }>) =>
       updateConfiguracoes(patch),
+    onSuccess: () => qc.invalidateQueries({ queryKey: adminKeys.config }),
+  });
+}
+
+// ─── Certificados ────────────────────────────────────────────────────────────
+export function useElegiveisCertificado() {
+  return useQuery({ queryKey: adminKeys.certificados, queryFn: getElegiveisCertificado });
+}
+
+export function useMarcarCertificadosEnviados() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => marcarCertificadosEnviados(),
     onSuccess: () => qc.invalidateQueries({ queryKey: adminKeys.config }),
   });
 }

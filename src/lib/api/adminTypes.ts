@@ -131,3 +131,15 @@ export interface ConfiguracoesEvento {
   jantarBloqueado: boolean;
   certificadosEnviadosEm: string | null;
 }
+
+// ─── Elegibilidade de certificado ─────────────────────────────────────────────
+export interface ElegivelCertificado {
+  inscritoId: string;
+  codigoInscricao: string;
+  pedidoId: string;
+  nome: string;
+  email: string;
+  totalCursos: number;
+  cursosPresentes: number;
+  elegivel: boolean;
+}

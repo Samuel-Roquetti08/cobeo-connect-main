@@ -22,6 +22,7 @@ import type {
   CategoriaParticipante,
   JantarOpcao,
   CupomCategoria,
+  ElegivelCertificado,
 } from "./adminTypes";
 
 // ─── INSCRITOS ───────────────────────────────────────────────────────────────
@@ -252,6 +253,37 @@ export async function updateConfiguracoes(
   const { error } = await supabase
     .from("configuracoes_evento")
     .update(dbPatch)
+    .eq("id", 1);
+  if (error) throw error;
+}
+
+// ─── CERTIFICADOS ────────────────────────────────────────────────────────────
+// Elegível = pedido pago E presença registrada em todos os cursos comprados
+// (a agregação é feita no banco via vw_elegiveis_certificado — mais barato e
+// correto do que puxar tudo e contar em JavaScript).
+export async function getElegiveisCertificado(): Promise<ElegivelCertificado[]> {
+  const { data, error } = await supabase
+    .from("vw_elegiveis_certificado")
+    .select("inscrito_id, codigo_inscricao, pedido_id, nome, email, total_cursos, cursos_presentes, elegivel");
+  if (error) throw error;
+  return (data ?? []).map((r) => ({
+    inscritoId: r.inscrito_id,
+    codigoInscricao: r.codigo_inscricao,
+    pedidoId: r.pedido_id,
+    nome: r.nome,
+    email: r.email,
+    totalCursos: r.total_cursos,
+    cursosPresentes: r.cursos_presentes,
+    elegivel: r.elegivel,
+  }));
+}
+
+// Ação em massa e irreversível: grava o timestamp de envio (usado pela UI para
+// desabilitar o botão e evitar reenvio/duplicação de e-mails).
+export async function marcarCertificadosEnviados(): Promise<void> {
+  const { error } = await supabase
+    .from("configuracoes_evento")
+    .update({ certificados_enviados_em: new Date().toISOString() })
     .eq("id", 1);
   if (error) throw error;
 }

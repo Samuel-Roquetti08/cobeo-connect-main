@@ -1,8 +1,8 @@
-import { useMemo, useState, type ChangeEvent, type DragEvent } from "react";
+import { useState, useEffect, type ChangeEvent, type DragEvent } from "react";
 import { motion, AnimatePresence, type Variants } from "framer-motion";
 import {
   Check, X, Loader2, CreditCard, QrCode, Banknote,
-  Copy, Upload, FileText, ChevronDown, Plus, Info,
+  Upload, FileText, ChevronDown, Plus, Info, ShieldCheck, AlertTriangle,
 } from "lucide-react";
 import { SectionTitle } from "./SectionTitle";
 import { supabase } from "@/lib/supabaseClient";
@@ -10,6 +10,10 @@ import {
   cursos, categorias, jantar, trabalho as trabalhoConfig,
   type CategoriaId, type CursoId, type JantarOpcaoId,
 } from "@/data/event";
+import {
+  criarPedidoEvento, criarPedidoTrabalho, getEstadoInscricoes,
+  type CupomAplicado, type EstadoInscricoes,
+} from "@/lib/api/pedidos";
 import {
   DadosForm,
   validateDados,
@@ -34,27 +38,39 @@ const INITIAL_DADOS: DadosFormState = {
   nome: "", email: "", telefone: "", whatsapp: "", sameWhats: false,
 };
 
+interface CouponState {
+  code: string;
+  state: "idle" | "loading" | "valid" | "invalid";
+  discount: number;
+  label: string;
+  tipo: "fixo" | "percentual" | null;
+  valorBruto: number;
+}
+const INITIAL_COUPON: CouponState = { code: "", state: "idle", discount: 0, label: "", tipo: null, valorBruto: 0 };
+
 /* ============================================================
    SHARED STATE — elevado para o componente raiz
    ============================================================ */
 export function Inscricoes() {
   const [tab, setTab] = useState<TabKey>("evento");
 
+  // Estado de bloqueio, lido do banco no carregamento (fail-open em pedidos.ts)
+  const [estado, setEstado] = useState<EstadoInscricoes>({ inscricoesBloqueadas: false, jantarBloqueado: false });
+  useEffect(() => {
+    getEstadoInscricoes().then(setEstado);
+  }, []);
+
   // Dados pessoais compartilhados entre as duas abas
   const [dados, setDados] = useState<DadosFormState>(INITIAL_DADOS);
   const [errors, setErrors] = useState<DadosFormErrors>(EMPTY_ERRORS);
+  const [consentimentoLgpd, setConsentimentoLgpd] = useState(false);
 
   // Estado do FlowEvento
   const [stepEvento, setStepEvento] = useState(0);
   const [categoriaId, setCategoriaId] = useState<CategoriaId>("aluno_unifafibe");
   const [cursosSelecionados, setCursosSelecionados] = useState<CursoId[]>([]);
   const [jantarOpcao, setJantarOpcao] = useState<JantarOpcaoId | null>(null);
-  const [coupon, setCoupon] = useState({
-    code: "",
-    state: "idle" as "idle" | "loading" | "valid" | "invalid",
-    discount: 0,
-    label: "",
-  });
+  const [coupon, setCoupon] = useState<CouponState>(INITIAL_COUPON);
   const [methodEvento, setMethodEvento] = useState<Method>("pix");
 
   // Estado do FlowTrabalho
@@ -69,22 +85,6 @@ export function Inscricoes() {
   });
   const [file, setFile] = useState<File | null>(null);
   const [methodTrabalho, setMethodTrabalho] = useState<Method>("pix");
-
-  function resetAll() {
-    setDados(INITIAL_DADOS);
-    setErrors(EMPTY_ERRORS);
-    setStepEvento(0);
-    setCategoriaId("aluno_unifafibe");
-    setCursosSelecionados([]);
-    setJantarOpcao(null);
-    setCoupon({ code: "", state: "idle", discount: 0, label: "" });
-    setMethodEvento("pix");
-    setStepTrabalho(0);
-    setCoauthors([]);
-    setWork({ titulo: "", resumo: "", categoria: "", modalidade: "", formato: "" });
-    setFile(null);
-    setMethodTrabalho("pix");
-  }
 
   return (
     <section id="inscricoes" className="bg-surface py-16 md:py-[120px]">
@@ -113,13 +113,15 @@ export function Inscricoes() {
                 <FlowEvento
                   dados={dados} setDados={setDados}
                   errors={errors} setErrors={setErrors}
+                  consentimentoLgpd={consentimentoLgpd} setConsentimentoLgpd={setConsentimentoLgpd}
                   step={stepEvento} setStep={setStepEvento}
                   categoriaId={categoriaId} setCategoriaId={setCategoriaId}
                   cursosSelecionados={cursosSelecionados} setCursosSelecionados={setCursosSelecionados}
                   jantarOpcao={jantarOpcao} setJantarOpcao={setJantarOpcao}
                   coupon={coupon} setCoupon={setCoupon}
                   method={methodEvento} setMethod={setMethodEvento}
-                  onReset={resetAll}
+                  inscricoesBloqueadas={estado.inscricoesBloqueadas}
+                  jantarBloqueado={estado.jantarBloqueado}
                 />
               </motion.div>
             ) : (
@@ -129,12 +131,12 @@ export function Inscricoes() {
                 <FlowTrabalho
                   dados={dados} setDados={setDados}
                   errors={errors} setErrors={setErrors}
+                  consentimentoLgpd={consentimentoLgpd} setConsentimentoLgpd={setConsentimentoLgpd}
                   step={stepTrabalho} setStep={setStepTrabalho}
                   coauthors={coauthors} setCoauthors={setCoauthors}
                   work={work} setWork={setWork}
                   file={file} setFile={setFile}
                   method={methodTrabalho} setMethod={setMethodTrabalho}
-                  onReset={resetAll}
                 />
               </motion.div>
             )}
@@ -194,32 +196,121 @@ function Stepper({ steps, current }: { steps: string[]; current: number }) {
   );
 }
 
+/* ── Bloqueio de inscrições (T5) ──────────────────────────────────────────── */
+function InscricoesBloqueadasAviso() {
+  return (
+    <div className="flex flex-col items-center gap-3 rounded-xl border border-border bg-background px-6 py-16 text-center">
+      <AlertTriangle className="h-10 w-10 text-gold" aria-hidden="true" />
+      <h3 className="font-display text-xl font-bold text-foreground">Inscrições Encerradas</h3>
+      <p className="max-w-md font-body text-sm text-muted-foreground">
+        As inscrições para o II COBEO não estão mais disponíveis no momento. Em caso de dúvidas,
+        entre em contato pelo e-mail cobeounifafibe@gmail.com.
+      </p>
+    </div>
+  );
+}
+
+/* ── LGPD: checkbox de consentimento + modal da política (T7) ──────────────── */
+function LgpdCheckbox({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+  const [showPolicy, setShowPolicy] = useState(false);
+  return (
+    <>
+      <label className="flex items-start gap-2 font-body text-xs text-muted-foreground select-none">
+        <input
+          type="checkbox"
+          checked={checked}
+          onChange={(e) => onChange(e.target.checked)}
+          className="mt-0.5 h-4 w-4 shrink-0 accent-primary cursor-pointer"
+        />
+        <span>
+          Li e concordo com a{" "}
+          <button
+            type="button"
+            onClick={() => setShowPolicy(true)}
+            className="font-semibold text-primary underline hover:no-underline"
+          >
+            Política de Privacidade
+          </button>{" "}
+          e autorizo o uso dos meus dados para esta inscrição.
+        </span>
+      </label>
+      {showPolicy && <PoliticaPrivacidadeModal onClose={() => setShowPolicy(false)} />}
+    </>
+  );
+}
+
+function PoliticaPrivacidadeModal({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="relative flex max-h-[85vh] w-full max-w-lg flex-col overflow-hidden rounded-xl bg-white shadow-2xl">
+        <header className="flex items-start justify-between border-b border-border p-5">
+          <h3 className="font-display text-lg font-bold text-foreground">Política de Privacidade</h3>
+          <button type="button" onClick={onClose} aria-label="Fechar" className="text-muted-foreground hover:text-foreground">
+            <X className="h-5 w-5" />
+          </button>
+        </header>
+        <div className="flex-1 overflow-y-auto p-5 font-body text-sm text-muted-foreground space-y-3">
+          <p className="rounded-md bg-gold/10 px-3 py-2 text-[11px] text-[#8a6d1a]">
+            Rascunho técnico gerado para operação do sistema — pendente de revisão jurídica da
+            UNIFAFIBE antes do lançamento oficial.
+          </p>
+          <p><strong className="text-foreground">Dados coletados:</strong> nome, e-mail, telefone, WhatsApp e,
+            quando aplicável, o arquivo (PDF/DOC/PPT) do trabalho acadêmico submetido.</p>
+          <p><strong className="text-foreground">Finalidade:</strong> processar sua inscrição e/ou submissão de
+            trabalho, emitir crachá e certificado, e enviar comunicações sobre o evento.</p>
+          <p><strong className="text-foreground">Compartilhamento:</strong> o Mercado Pago processa o pagamento;
+            o Resend envia os e-mails de confirmação. Nenhum outro terceiro recebe seus dados.</p>
+          <p><strong className="text-foreground">Retenção:</strong> os dados são mantidos pelo período
+            necessário à realização do evento, emissão de certificados e obrigações fiscais.</p>
+          <p><strong className="text-foreground">Contato do controlador:</strong> cobeounifafibe@gmail.com.</p>
+        </div>
+        <footer className="border-t border-border p-4">
+          <button type="button" onClick={onClose} className="w-full rounded-md bg-primary py-2.5 font-body text-sm font-semibold text-white hover:bg-[#8B1515]">
+            Fechar
+          </button>
+        </footer>
+      </div>
+    </div>
+  );
+}
+
 /* ============================================================
    FLOW: EVENTO
    ============================================================ */
 interface FlowEventoProps {
   dados: DadosFormState; setDados: (v: DadosFormState) => void;
   errors: DadosFormErrors; setErrors: (v: DadosFormErrors) => void;
+  consentimentoLgpd: boolean; setConsentimentoLgpd: (v: boolean) => void;
   step: number; setStep: (v: number) => void;
   categoriaId: CategoriaId; setCategoriaId: (v: CategoriaId) => void;
   cursosSelecionados: CursoId[]; setCursosSelecionados: (v: CursoId[]) => void;
   jantarOpcao: JantarOpcaoId | null; setJantarOpcao: (v: JantarOpcaoId | null) => void;
-  coupon: { code: string; state: "idle"|"loading"|"valid"|"invalid"; discount: number; label: string };
-  setCoupon: (v: any) => void;
+  coupon: CouponState;
+  setCoupon: (v: CouponState | ((c: CouponState) => CouponState)) => void;
   method: Method; setMethod: (v: Method) => void;
-  onReset: () => void;
+  inscricoesBloqueadas: boolean;
+  jantarBloqueado: boolean;
 }
 
 function FlowEvento({
   dados, setDados, errors, setErrors,
+  consentimentoLgpd, setConsentimentoLgpd,
   step, setStep,
   categoriaId, setCategoriaId,
   cursosSelecionados, setCursosSelecionados,
   jantarOpcao, setJantarOpcao,
   coupon, setCoupon,
   method, setMethod,
-  onReset,
+  inscricoesBloqueadas, jantarBloqueado,
 }: FlowEventoProps) {
+
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  if (inscricoesBloqueadas) {
+    return <InscricoesBloqueadasAviso />;
+  }
 
   // Preço unitário do curso com base na categoria selecionada
   const valorCurso = categorias.find((c) => c.id === categoriaId)?.valorCurso ?? 35;
@@ -235,9 +326,18 @@ function FlowEvento({
   // Se desmarcar cursos e ficar abaixo do mínimo, remove o jantar
   function handleToggleCurso(id: CursoId) {
     const jatem = cursosSelecionados.includes(id);
-    const nova = jatem
-      ? cursosSelecionados.filter((c) => c !== id)
-      : [...cursosSelecionados, id];
+    let nova: CursoId[];
+    if (jatem) {
+      nova = cursosSelecionados.filter((c) => c !== id);
+    } else {
+      const curso = cursos.find((c) => c.id === id);
+      // Hands-on paralelos (mesmo grupoExclusivo) acontecem ao mesmo tempo —
+      // selecionar um remove qualquer outro do mesmo grupo já escolhido.
+      const semConflito = curso?.grupoExclusivo
+        ? cursosSelecionados.filter((selId) => cursos.find((c) => c.id === selId)?.grupoExclusivo !== curso.grupoExclusivo)
+        : cursosSelecionados;
+      nova = [...semConflito, id];
+    }
     setCursosSelecionados(nova);
     if (nova.length < jantar.minimosCursos) setJantarOpcao(null);
   }
@@ -248,33 +348,36 @@ function FlowEvento({
 
   async function applyCoupon() {
     if (!coupon.code) return;
-    setCoupon((c: any) => ({ ...c, state: "loading" }));
+    setCoupon((c) => ({ ...c, state: "loading" }));
     try {
       const { data, error } = await supabase.rpc("validar_cupom", {
         p_codigo: coupon.code.toUpperCase(),
       });
       if (error) throw error;
       if (data?.valido) {
+        const valorBruto = Number(data.valor);
         const discount =
           data.tipo === "percentual"
-            ? Math.round(subtotalCursos * (data.valor / 100))
-            : Number(data.valor);
+            ? Math.round(subtotalCursos * (valorBruto / 100))
+            : valorBruto;
         const label =
           data.tipo === "percentual"
-            ? `${data.valor}% de desconto nos cursos`
-            : `R$ ${Number(data.valor).toFixed(2).replace(".", ",")} de desconto`;
-        setCoupon((c: any) => ({ ...c, state: "valid", discount, label }));
+            ? `${valorBruto}% de desconto nos cursos`
+            : `R$ ${valorBruto.toFixed(2).replace(".", ",")} de desconto`;
+        setCoupon((c) => ({ ...c, state: "valid", discount, label, tipo: data.tipo, valorBruto }));
       } else {
-        setCoupon((c: any) => ({
+        setCoupon((c) => ({
           ...c,
           state: "invalid",
           discount: 0,
           label: data?.mensagem ?? "Cupom inválido ou já utilizado",
+          tipo: null,
+          valorBruto: 0,
         }));
       }
     } catch (e) {
       console.error("[cupom]", e);
-      setCoupon((c: any) => ({ ...c, state: "invalid", discount: 0, label: "" }));
+      setCoupon((c) => ({ ...c, state: "invalid", discount: 0, label: "", tipo: null, valorBruto: 0 }));
     }
   }
 
@@ -286,6 +389,41 @@ function FlowEvento({
     const validated = validateDados(dados);
     setErrors(validated);
     if (isDadosValid(validated)) setStep(1);
+  }
+
+  async function handleConfirmarPagamento() {
+    setSubmitError(null);
+    setSubmitting(true);
+    try {
+      const cupomAplicado: CupomAplicado | null =
+        coupon.state === "valid" && coupon.tipo
+          ? { codigo: coupon.code, tipo: coupon.tipo, valor: coupon.valorBruto }
+          : null;
+
+      const { pedidoId } = await criarPedidoEvento({
+        nome: dados.nome,
+        email: dados.email,
+        telefone: dados.telefone,
+        whatsapp: dados.sameWhats ? dados.telefone : dados.whatsapp,
+        categoria: categoriaId,
+        cursosSelecionados,
+        jantarOpcao,
+        cupom: cupomAplicado,
+        metodoPagamento: method,
+        consentimentoLgpd,
+      });
+
+      const { data, error } = await supabase.functions.invoke("criar-preferencia", {
+        body: { pedidoId },
+      });
+      if (error) throw new Error(error.message ?? "Erro ao iniciar o pagamento.");
+      if (!data?.initPoint) throw new Error("Não foi possível iniciar o pagamento.");
+
+      window.location.href = data.initPoint;
+    } catch (e) {
+      setSubmitError((e as Error)?.message ?? "Não foi possível processar seu pedido. Tente novamente.");
+      setSubmitting(false);
+    }
   }
 
   // Linhas do resumo do pedido
@@ -302,7 +440,7 @@ function FlowEvento({
 
   return (
     <div>
-      <Stepper steps={["Dados & Cursos", "Pagamento", "Confirmação"]} current={step} />
+      <Stepper steps={["Dados & Cursos", "Pagamento"]} current={step} />
 
       <AnimatePresence mode="wait">
         {/* STEP 1 — Dados e seleção de cursos */}
@@ -325,7 +463,7 @@ function FlowEvento({
                         aria-checked={categoriaId === cat.id}
                         onClick={() => {
                           setCategoriaId(cat.id);
-                          setCoupon({ code: "", state: "idle", discount: 0, label: "" });
+                          setCoupon(INITIAL_COUPON);
                         }}
                         className={`relative rounded-xl border-2 px-4 py-4 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
                           categoriaId === cat.id
@@ -364,6 +502,7 @@ function FlowEvento({
                   {(["dia1", "dia2", "dia3"] as const).map((diaId) => {
                     const cursosDia = cursos.filter((c) => c.diaId === diaId);
                     const diaLabel = { dia1: "07/10 · Quarta-feira", dia2: "08/10 · Quinta-feira", dia3: "09/10 · Sexta-feira" }[diaId];
+                    const gruposMostrados = new Set<string>();
                     return (
                       <div key={diaId} className="mb-4">
                         <p className="mb-2 font-body text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -372,37 +511,52 @@ function FlowEvento({
                         <div className="space-y-2">
                           {cursosDia.map((curso) => {
                             const selecionado = cursosSelecionados.includes(curso.id as CursoId);
+                            const primeiroDoGrupo = curso.grupoExclusivo && !gruposMostrados.has(curso.grupoExclusivo);
+                            if (curso.grupoExclusivo) gruposMostrados.add(curso.grupoExclusivo);
                             return (
-                              <button
-                                key={curso.id}
-                                type="button"
-                                onClick={() => handleToggleCurso(curso.id as CursoId)}
-                                className={`relative w-full rounded-lg border-2 px-4 py-3 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
-                                  selecionado
-                                    ? "border-primary bg-[#fff8f8]"
-                                    : "border-border bg-surface hover:border-primary/40"
-                                }`}
-                              >
-                                <div className="flex items-start gap-3">
-                                  <div className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 transition-colors ${
-                                    selecionado ? "border-primary bg-primary" : "border-border"
-                                  }`}>
-                                    {selecionado && <Check className="h-3 w-3 text-white" aria-hidden="true" />}
+                              <div key={curso.id}>
+                                {primeiroDoGrupo && (
+                                  <p className="mb-1.5 mt-1 font-body text-[11px] font-medium text-[#b8860b]">
+                                    {curso.horario} · paralelos — escolha 1 opção
+                                  </p>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleCurso(curso.id as CursoId)}
+                                  className={`relative w-full rounded-lg border-2 px-4 py-3 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+                                    selecionado
+                                      ? "border-primary bg-[#fff8f8]"
+                                      : "border-border bg-surface hover:border-primary/40"
+                                  }`}
+                                >
+                                  <div className="flex items-start gap-3">
+                                    <div className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center ${curso.grupoExclusivo ? "rounded-full" : "rounded"} border-2 transition-colors ${
+                                      selecionado ? "border-primary bg-primary" : "border-border"
+                                    }`}>
+                                      {selecionado && <Check className="h-3 w-3 text-white" aria-hidden="true" />}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <p className="font-body text-sm font-semibold text-foreground leading-snug">
+                                        {curso.titulo}
+                                        {curso.vagasLimitadas && (
+                                          <span className="ml-2 rounded-full bg-gold/20 px-2 py-0.5 font-body text-[10px] font-semibold uppercase tracking-wider text-[#8a6d1a]">
+                                            30 vagas
+                                          </span>
+                                        )}
+                                      </p>
+                                      <p className="mt-0.5 font-body text-xs text-muted-foreground">
+                                        {curso.horario}
+                                        {curso.palestrante && ` · ${curso.palestrante}`}
+                                        {curso.instituicao && ` — ${curso.instituicao}`}
+                                        {!curso.palestrante && " · A confirmar"}
+                                      </p>
+                                    </div>
+                                    <span className="shrink-0 font-display text-sm font-bold text-primary">
+                                      R$ {valorCurso.toFixed(2).replace(".", ",")}
+                                    </span>
                                   </div>
-                                  <div className="flex-1 min-w-0">
-                                    <p className="font-body text-sm font-semibold text-foreground leading-snug">{curso.titulo}</p>
-                                    <p className="mt-0.5 font-body text-xs text-muted-foreground">
-                                      {curso.horario}
-                                      {curso.palestrante && ` · ${curso.palestrante}`}
-                                      {curso.instituicao && ` — ${curso.instituicao}`}
-                                      {!curso.palestrante && " · A confirmar"}
-                                    </p>
-                                  </div>
-                                  <span className="shrink-0 font-display text-sm font-bold text-primary">
-                                    R$ {valorCurso.toFixed(2).replace(".", ",")}
-                                  </span>
-                                </div>
-                              </button>
+                                </button>
+                              </div>
                             );
                           })}
                         </div>
@@ -428,62 +582,71 @@ function FlowEvento({
                       role="group"
                       aria-labelledby="jantar-label"
                     >
-                      <div className="rounded-lg border border-gold/60 bg-[#fffbf0] px-4 py-4">
-                        <p id="jantar-label" className="mb-1 font-body text-xs font-semibold uppercase tracking-wider text-[#b8860b]">
-                          🎉 Jantar de Encerramento — {jantar.local}
-                        </p>
-                        <p className="mb-3 font-body text-xs text-muted-foreground">
-                          {jantar.data} · Opcional para participantes com 3+ cursos
-                        </p>
-                        <div className="grid gap-2 sm:grid-cols-2">
-                          {/* Opção: não quero */}
-                          <button
-                            type="button"
-                            onClick={() => setJantarOpcao(null)}
-                            className={`rounded-lg border-2 px-4 py-3 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
-                              jantarOpcao === null
-                                ? "border-primary bg-[#fff8f8]"
-                                : "border-border bg-surface hover:border-primary/40"
-                            }`}
-                          >
-                            <div className="flex items-center gap-2">
-                              <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${jantarOpcao === null ? "border-primary bg-primary" : "border-border"}`}>
-                                {jantarOpcao === null && <Check className="h-3 w-3 text-white" />}
-                              </div>
-                              <span className="font-body text-sm font-medium text-foreground">Não quero o jantar</span>
-                            </div>
-                          </button>
-
-                          {/* Opções de jantar */}
-                          {jantar.opcoes.map((opcao) => (
+                      {jantarBloqueado ? (
+                        <div className="rounded-lg border border-border bg-background px-4 py-4">
+                          <p className="font-body text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                            🎉 Jantar de Encerramento
+                          </p>
+                          <p className="mt-1 font-body text-sm text-muted-foreground">Vagas esgotadas.</p>
+                        </div>
+                      ) : (
+                        <div className="rounded-lg border border-gold/60 bg-[#fffbf0] px-4 py-4">
+                          <p id="jantar-label" className="mb-1 font-body text-xs font-semibold uppercase tracking-wider text-[#b8860b]">
+                            🎉 Jantar de Encerramento — {jantar.local}
+                          </p>
+                          <p className="mb-3 font-body text-xs text-muted-foreground">
+                            {jantar.data} · Opcional para participantes com 3+ cursos
+                          </p>
+                          <div className="grid gap-2 sm:grid-cols-2">
+                            {/* Opção: não quero */}
                             <button
-                              key={opcao.id}
                               type="button"
-                              onClick={() => setJantarOpcao(opcao.id)}
+                              onClick={() => setJantarOpcao(null)}
                               className={`rounded-lg border-2 px-4 py-3 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
-                                jantarOpcao === opcao.id
+                                jantarOpcao === null
                                   ? "border-primary bg-[#fff8f8]"
                                   : "border-border bg-surface hover:border-primary/40"
                               }`}
                             >
-                              <div className="flex items-start gap-2">
-                                <div className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${jantarOpcao === opcao.id ? "border-primary bg-primary" : "border-border"}`}>
-                                  {jantarOpcao === opcao.id && <Check className="h-3 w-3 text-white" />}
+                              <div className="flex items-center gap-2">
+                                <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${jantarOpcao === null ? "border-primary bg-primary" : "border-border"}`}>
+                                  {jantarOpcao === null && <Check className="h-3 w-3 text-white" />}
                                 </div>
-                                <div>
-                                  <p className="font-body text-sm font-medium text-foreground">{opcao.label}</p>
-                                  <p className="font-display text-base font-bold text-primary">
-                                    R$ {opcao.valor.toFixed(2).replace(".", ",")}
-                                  </p>
-                                </div>
+                                <span className="font-body text-sm font-medium text-foreground">Não quero o jantar</span>
                               </div>
                             </button>
-                          ))}
+
+                            {/* Opções de jantar */}
+                            {jantar.opcoes.map((opcao) => (
+                              <button
+                                key={opcao.id}
+                                type="button"
+                                onClick={() => setJantarOpcao(opcao.id)}
+                                className={`rounded-lg border-2 px-4 py-3 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+                                  jantarOpcao === opcao.id
+                                    ? "border-primary bg-[#fff8f8]"
+                                    : "border-border bg-surface hover:border-primary/40"
+                                }`}
+                              >
+                                <div className="flex items-start gap-2">
+                                  <div className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${jantarOpcao === opcao.id ? "border-primary bg-primary" : "border-border"}`}>
+                                    {jantarOpcao === opcao.id && <Check className="h-3 w-3 text-white" />}
+                                  </div>
+                                  <div>
+                                    <p className="font-body text-sm font-medium text-foreground">{opcao.label}</p>
+                                    <p className="font-display text-base font-bold text-primary">
+                                      R$ {opcao.valor.toFixed(2).replace(".", ",")}
+                                    </p>
+                                  </div>
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                          <p className="mt-3 font-body text-[11px] text-muted-foreground">
+                            {jantar.observacoes[0]}
+                          </p>
                         </div>
-                        <p className="mt-3 font-body text-[11px] text-muted-foreground">
-                          {jantar.observacoes[0]}
-                        </p>
-                      </div>
+                      )}
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -495,11 +658,13 @@ function FlowEvento({
                   <CouponField
                     state={coupon.state}
                     value={coupon.code}
-                    onChange={(v) => setCoupon((c: any) => ({ ...c, code: v, state: "idle", discount: 0, label: "" }))}
+                    onChange={(v) => setCoupon((c) => ({ ...c, code: v, state: "idle", discount: 0, label: "" }))}
                     onApply={applyCoupon}
                     label={coupon.label}
                   />
                 )}
+
+                <LgpdCheckbox checked={consentimentoLgpd} onChange={setConsentimentoLgpd} />
               </div>
 
               {/* Resumo lateral */}
@@ -511,7 +676,7 @@ function FlowEvento({
               />
             </div>
 
-            <PrimaryButton onClick={handleContinuar} className="mt-8">
+            <PrimaryButton onClick={handleContinuar} disabled={!consentimentoLgpd} className="mt-8">
               Continuar para Pagamento
             </PrimaryButton>
           </motion.div>
@@ -526,15 +691,10 @@ function FlowEvento({
               total={total}
               labelLinha={`${cursosSelecionados.length} curso${cursosSelecionados.length > 1 ? "s" : ""}${jantarOpcao ? " + Jantar" : ""}`}
               onBack={() => setStep(0)}
-              onConfirm={() => setStep(2)}
+              onConfirm={handleConfirmarPagamento}
+              submitting={submitting}
+              error={submitError}
             />
-          </motion.div>
-        )}
-
-        {/* STEP 3 — Confirmação */}
-        {step === 2 && (
-          <motion.div key="s3" variants={fade} initial="hidden" animate="visible" exit="exit">
-            <Confirmacao email={dados.email} onReset={onReset} />
           </motion.div>
         )}
       </AnimatePresence>
@@ -548,24 +708,27 @@ function FlowEvento({
 interface FlowTrabalhoProps {
   dados: DadosFormState; setDados: (v: DadosFormState) => void;
   errors: DadosFormErrors; setErrors: (v: DadosFormErrors) => void;
+  consentimentoLgpd: boolean; setConsentimentoLgpd: (v: boolean) => void;
   step: number; setStep: (v: number) => void;
   coauthors: string[]; setCoauthors: (v: string[]) => void;
   work: { titulo: string; resumo: string; categoria: string; modalidade: string; formato: string };
-  setWork: (v: any) => void;
+  setWork: (v: { titulo: string; resumo: string; categoria: string; modalidade: string; formato: string }) => void;
   file: File | null; setFile: (v: File | null) => void;
   method: Method; setMethod: (v: Method) => void;
-  onReset: () => void;
 }
 
 function FlowTrabalho({
   dados, setDados, errors, setErrors,
+  consentimentoLgpd, setConsentimentoLgpd,
   step, setStep,
   coauthors, setCoauthors,
   work, setWork,
   file, setFile,
   method, setMethod,
-  onReset,
 }: FlowTrabalhoProps) {
+
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   function handleContinuarDados() {
     const validated = validateDados(dados);
@@ -573,11 +736,46 @@ function FlowTrabalho({
     if (isDadosValid(validated)) setStep(1);
   }
 
+  async function handleConfirmarPagamento() {
+    setSubmitError(null);
+    setSubmitting(true);
+    try {
+      if (!file) throw new Error("Selecione o arquivo do trabalho.");
+
+      const { pedidoId } = await criarPedidoTrabalho({
+        nome: dados.nome,
+        email: dados.email,
+        telefone: dados.telefone,
+        whatsapp: dados.sameWhats ? dados.telefone : dados.whatsapp,
+        titulo: work.titulo,
+        resumo: work.resumo,
+        categoria: work.categoria,
+        modalidade: work.modalidade as "Presencial" | "Online",
+        formato: work.formato as "Oral" | "Pôster",
+        coautores: coauthors,
+        arquivo: file,
+        metodoPagamento: method,
+        consentimentoLgpd,
+      });
+
+      const { data, error } = await supabase.functions.invoke("criar-preferencia", {
+        body: { pedidoId },
+      });
+      if (error) throw new Error(error.message ?? "Erro ao iniciar o pagamento.");
+      if (!data?.initPoint) throw new Error("Não foi possível iniciar o pagamento.");
+
+      window.location.href = data.initPoint;
+    } catch (e) {
+      setSubmitError((e as Error)?.message ?? "Não foi possível processar seu pedido. Tente novamente.");
+      setSubmitting(false);
+    }
+  }
+
   const precoTrabalho = trabalhoConfig.valor;
 
   return (
     <div>
-      <Stepper steps={["Dados", "Trabalho", "Pagamento", "Confirmação"]} current={step} />
+      <Stepper steps={["Dados", "Trabalho", "Pagamento"]} current={step} />
 
       <AnimatePresence mode="wait">
         {/* STEP 1 — Dados */}
@@ -634,7 +832,9 @@ function FlowTrabalho({
               )}
             </div>
 
-            <PrimaryButton onClick={handleContinuarDados}>Continuar</PrimaryButton>
+            <LgpdCheckbox checked={consentimentoLgpd} onChange={setConsentimentoLgpd} />
+
+            <PrimaryButton onClick={handleContinuarDados} disabled={!consentimentoLgpd}>Continuar</PrimaryButton>
           </motion.div>
         )}
 
@@ -725,7 +925,7 @@ function FlowTrabalho({
             </Accordion>
 
             <PrimaryButton
-              disabled={!work.titulo || !work.categoria || !work.modalidade || !work.formato}
+              disabled={!work.titulo || !work.categoria || !work.modalidade || !work.formato || !file}
               onClick={() => setStep(2)}
             >
               Continuar para Pagamento
@@ -748,15 +948,10 @@ function FlowTrabalho({
               total={precoTrabalho}
               labelLinha="Submissão de Trabalho Acadêmico"
               onBack={() => setStep(1)}
-              onConfirm={() => setStep(3)}
+              onConfirm={handleConfirmarPagamento}
+              submitting={submitting}
+              error={submitError}
             />
-          </motion.div>
-        )}
-
-        {/* STEP 4 — Confirmação */}
-        {step === 3 && (
-          <motion.div key="t4" variants={fade} initial="hidden" animate="visible" exit="exit">
-            <Confirmacao email={dados.email} onReset={onReset} />
           </motion.div>
         )}
       </AnimatePresence>
@@ -879,10 +1074,11 @@ function PrimaryButton({ children, onClick, disabled, className = "" }: {
 }
 
 /* ── PaymentStep ────────────────────────────────────────────────────────────── */
-function PaymentStep({ method, setMethod, total, labelLinha = "Inscrição", onBack, onConfirm }: {
+function PaymentStep({ method, setMethod, total, labelLinha = "Inscrição", onBack, onConfirm, submitting, error }: {
   method: Method; setMethod: (m: Method) => void;
   total: number; labelLinha?: string;
   onBack: () => void; onConfirm: () => void;
+  submitting: boolean; error: string | null;
 }) {
   return (
     <div>
@@ -902,30 +1098,38 @@ function PaymentStep({ method, setMethod, total, labelLinha = "Inscrição", onB
         </span>
       </div>
 
-      <AnimatePresence mode="wait">
-        {method === "pix" ? (
-          <motion.div key="pix" variants={fade} initial="hidden" animate="visible" exit="exit">
-            <PixPanel />
-          </motion.div>
-        ) : (
-          <motion.div key="card" variants={fade} initial="hidden" animate="visible" exit="exit">
-            <CardPanel />
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <div className="flex items-start gap-3 rounded-lg border border-border bg-background px-4 py-4">
+        <ShieldCheck className="h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
+        <p className="font-body text-sm text-muted-foreground">
+          Você será redirecionado ao ambiente seguro do <strong className="text-foreground">Mercado Pago</strong> para
+          concluir o pagamento com o método escolhido. Seu pedido já está reservado e aguardando confirmação.
+        </p>
+      </div>
+
+      {error && (
+        <p role="alert" className="mt-4 rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3 font-body text-sm text-destructive">
+          {error}
+        </p>
+      )}
 
       <div className="mt-6 flex gap-3">
         <button
-          type="button" onClick={onBack}
-          className="rounded-md border border-border px-6 py-3 font-body text-sm font-semibold text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          type="button" onClick={onBack} disabled={submitting}
+          className="rounded-md border border-border px-6 py-3 font-body text-sm font-semibold text-muted-foreground transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         >
           Voltar
         </button>
         <button
-          type="button" onClick={onConfirm}
-          className="flex-1 rounded-md bg-primary px-6 py-3 font-body text-sm font-semibold text-white transition-colors hover:bg-[#8B1515] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          type="button" onClick={onConfirm} disabled={submitting}
+          className="flex flex-1 items-center justify-center gap-2 rounded-md bg-primary px-6 py-3 font-body text-sm font-semibold text-white transition-colors hover:bg-[#8B1515] disabled:cursor-not-allowed disabled:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         >
-          Confirmar Pagamento
+          {submitting ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> Processando...
+            </>
+          ) : (
+            "Ir para o Pagamento"
+          )}
         </button>
       </div>
     </div>
@@ -955,111 +1159,6 @@ function PayCard({ active, onClick, icon, title, sub }: {
   );
 }
 
-function PixPanel() {
-  const [secs, setSecs] = useState(899);
-  useState(() => {
-    const id = setInterval(() => setSecs((s) => (s > 0 ? s - 1 : s)), 1000);
-    return () => clearInterval(id);
-  });
-  const mm = String(Math.floor(secs / 60)).padStart(2, "0");
-  const ss = String(secs % 60).padStart(2, "0");
-  const key = "00020126360014BR.GOV.BCB.PIX0114cobeounifafibe";
-
-  return (
-    <div className="grid items-center gap-6 rounded-xl border border-border bg-background p-6 md:grid-cols-[200px_1fr]">
-      <div className="flex h-[200px] w-[200px] items-center justify-center rounded-lg bg-white shadow-inner" aria-label="QR Code PIX">
-        <QrCode className="h-24 w-24 text-primary" aria-hidden="true" />
-      </div>
-      <div>
-        <p className="font-body text-xs font-semibold uppercase tracking-wider text-muted-foreground">Chave PIX Copia e Cola</p>
-        <div className="mt-1 flex items-center gap-2">
-          <input readOnly value={key} aria-label="Chave PIX" className="flex-1 rounded-md border border-input bg-surface px-3 py-2 font-mono text-xs" />
-          <button type="button" onClick={() => navigator.clipboard?.writeText(key)} aria-label="Copiar chave PIX" className="rounded-md bg-primary p-2 text-white hover:bg-[#8B1515] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
-            <Copy className="h-4 w-4" />
-          </button>
-        </div>
-        <div className="mt-4 flex items-center justify-between rounded-md bg-[#fff8f8] px-4 py-3">
-          <span className="font-body text-sm text-muted-foreground">Expira em</span>
-          <time aria-live="polite" className="font-mono text-xl font-bold text-primary">{mm}:{ss}</time>
-        </div>
-        <p className="mt-3 inline-flex items-center gap-2 font-body text-xs text-muted-foreground">
-          <span className="relative flex h-2 w-2" aria-hidden="true">
-            <span className="absolute inset-0 animate-ping rounded-full bg-primary opacity-60" />
-            <span className="relative h-2 w-2 rounded-full bg-primary" />
-          </span>
-          Aguardando confirmação do pagamento...
-        </p>
-      </div>
-    </div>
-  );
-}
-
-function CardPanel() {
-  const [card, setCard] = useState({ number: "", name: "", expiry: "", cvv: "" });
-  function formatExpiry(v: string) {
-    const digits = v.replace(/\D/g, "").slice(0, 4);
-    return digits.length > 2 ? `${digits.slice(0, 2)}/${digits.slice(2)}` : digits;
-  }
-  const masked = card.number.replace(/\D/g, "").slice(0, 16).replace(/(.{4})/g, "$1 ").trim();
-
-  return (
-    <div className="grid gap-6 md:grid-cols-[280px_1fr]">
-      <div aria-hidden="true" className="flex h-[160px] w-full max-w-[280px] flex-col justify-between rounded-2xl p-5 text-white shadow-lg" style={{ background: "linear-gradient(135deg, #731111 0%, #4a0a0a 100%)" }}>
-        <CreditCard className="h-7 w-7 text-[#C9A84C]" />
-        <div>
-          <div className="font-mono text-lg tracking-wider">{masked || "0000 0000 0000 0000"}</div>
-          <div className="mt-3 flex justify-between font-mono text-xs uppercase">
-            <span>{card.name || "Nome no Cartão"}</span>
-            <span>{card.expiry || "MM/AA"}</span>
-          </div>
-        </div>
-      </div>
-      <div className="space-y-3">
-        <Field label="Número do Cartão" htmlFor="card-number">
-          <input id="card-number" type="text" inputMode="numeric" value={masked} onChange={(e: ChangeEvent<HTMLInputElement>) => setCard({ ...card, number: e.target.value })} placeholder="0000 0000 0000 0000" autoComplete="cc-number" maxLength={19} className="w-full rounded-md border border-input bg-surface px-3 py-2 font-mono text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" />
-        </Field>
-        <Field label="Nome no Cartão" htmlFor="card-name">
-          <input id="card-name" type="text" value={card.name} onChange={(e: ChangeEvent<HTMLInputElement>) => setCard({ ...card, name: e.target.value.toUpperCase() })} placeholder="NOME COMO NO CARTÃO" autoComplete="cc-name" className="w-full rounded-md border border-input bg-surface px-3 py-2 font-body text-sm uppercase outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" />
-        </Field>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Validade" htmlFor="card-expiry">
-            <input id="card-expiry" type="text" inputMode="numeric" value={card.expiry} onChange={(e: ChangeEvent<HTMLInputElement>) => setCard({ ...card, expiry: formatExpiry(e.target.value) })} placeholder="MM/AA" autoComplete="cc-exp" maxLength={5} className="w-full rounded-md border border-input bg-surface px-3 py-2 font-mono text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" />
-          </Field>
-          <Field label="CVV" htmlFor="card-cvv">
-            <input id="card-cvv" type="text" inputMode="numeric" value={card.cvv} onChange={(e: ChangeEvent<HTMLInputElement>) => setCard({ ...card, cvv: e.target.value.replace(/\D/g, "").slice(0, 4) })} placeholder="•••" autoComplete="cc-csc" maxLength={4} className="w-full rounded-md border border-input bg-surface px-3 py-2 font-mono text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" />
-          </Field>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ── Confirmação ───────────────────────────────────────────────────────────── */
-function Confirmacao({ email, onReset }: { email: string; onReset: () => void }) {
-  const protocolo = useMemo(() => `COBEO-${Math.random().toString(36).slice(2, 8).toUpperCase()}`, []);
-  return (
-    <div className="py-6 text-center" role="status" aria-live="polite">
-      <motion.div initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.5 }} className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-gold" aria-hidden="true">
-        <Check className="h-10 w-10 text-primary" strokeWidth={3} />
-      </motion.div>
-      <h2 className="mt-6 font-display text-3xl font-extrabold text-foreground">Inscrição Confirmada!</h2>
-      <p className="mt-2 font-body text-sm text-muted-foreground">
-        Um e-mail de confirmação foi enviado para <strong className="text-foreground">{email || "seu endereço"}</strong>.
-      </p>
-      <div className="mx-auto mt-8 max-w-md rounded-xl border border-border bg-background p-5 text-left">
-        <p className="font-body text-xs font-semibold uppercase tracking-wider text-muted-foreground">Protocolo de Inscrição</p>
-        <p className="mt-1 font-mono text-base font-bold text-primary">{protocolo}</p>
-        <p className="mt-2 font-body text-[11px] text-muted-foreground">Guarde este código — ele será necessário para retirada do crachá e solicitação de reembolso.</p>
-      </div>
-      <div className="mt-8 flex flex-wrap justify-center gap-3">
-        <button type="button" onClick={onReset} className="rounded-md border border-border px-6 py-3 font-body text-sm font-semibold text-foreground transition-colors hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
-          Voltar ao Início
-        </button>
-      </div>
-    </div>
-  );
-}
-
 /* ── FileUpload ────────────────────────────────────────────────────────────── */
 function FileUpload({ file, onChange }: { file: File | null; onChange: (f: File | null) => void }) {
   const [over, setOver] = useState(false);
@@ -1086,7 +1185,7 @@ function FileUpload({ file, onChange }: { file: File | null; onChange: (f: File 
         <Upload className="h-10 w-10 text-secondary" aria-hidden="true" />
         <p className="font-body text-base font-medium text-foreground">Arraste seu arquivo aqui</p>
         <p className="font-body text-sm text-primary underline">ou clique para selecionar</p>
-        <p className="font-body text-xs text-muted-foreground">PDF, DOC, DOCX, PPT, PPTX</p>
+        <p className="font-body text-xs text-muted-foreground">PDF, DOC, DOCX, PPT ou PPTX — até 10 MB</p>
         <input type="file" className="sr-only" onChange={onPick} accept=".pdf,.doc,.docx,.ppt,.pptx" aria-label="Selecionar arquivo do trabalho acadêmico" />
       </label>
       {file && (
