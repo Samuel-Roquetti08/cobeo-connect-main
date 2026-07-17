@@ -7,12 +7,36 @@
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 import { loadEnv } from "vite";
 
-// DIAGNÓSTICO TEMPORÁRIO — remover depois de confirmar a causa do 500 no Cloudflare.
-console.log("[DIAGNOSTICO] cwd:", process.cwd());
-const diagEnv = loadEnv("production", process.cwd(), "VITE_");
-console.log("[DIAGNOSTICO] VITE_SUPABASE_URL presente:", Boolean(diagEnv.VITE_SUPABASE_URL));
-console.log("[DIAGNOSTICO] VITE_SUPABASE_ANON_KEY presente:", Boolean(diagEnv.VITE_SUPABASE_ANON_KEY));
-console.log("[DIAGNOSTICO] chaves encontradas:", Object.keys(diagEnv));
+// As Build variables do painel do Cloudflare chegam via process.env, e no Vite
+// process.env tem precedência sobre .env.production — um valor errado no painel
+// vence o arquivo commitado e só se manifesta como 500 em runtime, com o build
+// verde. Validar aqui transforma isso num build vermelho, que é onde dá para ver.
+const env = loadEnv("production", process.cwd(), "VITE_");
+
+const problemas = Object.entries(env).flatMap(([nome, valor]) => {
+  // Os campos Name e Value do painel são separados; colar a linha inteira do
+  // .env no Value grava "NOME=valor" como se fosse o valor.
+  if (valor.startsWith(`${nome}=`)) {
+    return [`${nome}: valor embute o próprio nome ("${valor.slice(0, 40)}…") — o campo Value leva só o valor`];
+  }
+  if (nome.endsWith("_URL") && !/^https?:\/\//.test(valor)) {
+    return [`${nome}: não é uma URL http(s) válida ("${valor.slice(0, 40)}…")`];
+  }
+  return [];
+});
+
+for (const nome of ["VITE_SUPABASE_URL", "VITE_SUPABASE_ANON_KEY", "VITE_MP_PUBLIC_KEY"]) {
+  if (!env[nome]) problemas.push(`${nome}: ausente`);
+}
+
+if (problemas.length > 0) {
+  throw new Error(
+    `Variáveis VITE_* inválidas — o bundle sairia quebrado e a página daria 500:\n` +
+      problemas.map((p) => `  - ${p}`).join("\n") +
+      `\nCorrija em Cloudflare > Workers > Settings > Build > Variables and secrets, ` +
+      `ou remova-as de lá para que .env.production valha.`,
+  );
+}
 
 export default defineConfig({
   tanstackStart: {

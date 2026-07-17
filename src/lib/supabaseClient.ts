@@ -7,13 +7,36 @@ import { createClient } from "@supabase/supabase-js";
 // NUNCA coloque a service_role key aqui — ela ignora RLS e só pode viver
 // no servidor (Edge Functions / variáveis de ambiente do Cloudflare).
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+// Este módulo roda em escopo global: no SSR do Cloudflare, um valor inválido
+// aqui derruba TODA rota com 500 antes de qualquer render. Um console.warn
+// não bastaria — o createClient lança logo em seguida com "Invalid supabaseUrl",
+// que não diz qual valor chegou nem de onde veio.
+function exigirEnv(nome: string, valor: string | undefined): string {
+  if (!valor) {
+    throw new Error(
+      `[supabase] ${nome} não definida. Defina em .env (local) ou nas Build ` +
+        `variables do Cloudflare (Settings > Build).`,
+    );
+  }
+  // As Build variables do Cloudflare têm campos Name e Value separados. Colar a
+  // linha inteira do .env no Value grava "NOME=valor" como se fosse o valor.
+  if (valor.startsWith(`${nome}=`)) {
+    throw new Error(
+      `[supabase] ${nome} veio com o próprio nome embutido no valor ` +
+        `("${valor.slice(0, 40)}…"). No painel do Cloudflare, o campo Value ` +
+        `deve conter só o valor, sem o prefixo "${nome}=".`,
+    );
+  }
+  return valor;
+}
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn(
-    "[supabase] VITE_SUPABASE_URL ou VITE_SUPABASE_ANON_KEY não definidas. " +
-    "Configure no arquivo .env (local) e nas variáveis do Cloudflare (produção)."
+const supabaseUrl = exigirEnv("VITE_SUPABASE_URL", import.meta.env.VITE_SUPABASE_URL);
+const supabaseAnonKey = exigirEnv("VITE_SUPABASE_ANON_KEY", import.meta.env.VITE_SUPABASE_ANON_KEY);
+
+if (!/^https?:\/\//.test(supabaseUrl)) {
+  throw new Error(
+    `[supabase] VITE_SUPABASE_URL não é uma URL http(s) válida: "${supabaseUrl}". ` +
+      `Esperado algo como https://<projeto>.supabase.co`,
   );
 }
 

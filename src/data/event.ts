@@ -2,7 +2,7 @@
 export const evento = {
   nome: "II COBEO — Congresso de Odontologia de Bebedouro",
   data: "7 a 9 de outubro de 2026",
-  local: "Anfiteatro 1 — Centro Universitário UNIFAFIBE — Bebedouro/SP",
+  local: "Centro Universitário UNIFAFIBE — Bebedouro/SP",
   localMaps: "https://maps.google.com/?q=Centro+Universitário+UNIFAFIBE+Bebedouro+SP",
   edicao: "II Edição · 2026",
 };
@@ -379,8 +379,8 @@ export const palestrantes = [
 export const contato = {
   email: "cobeounifafibe@gmail.com",
   telefone: null, // [LOREM — aguardando telefone oficial]
-  endereco: "Anfiteatro 1 — Centro Universitário UNIFAFIBE, Bebedouro/SP",
-  maps: "https://maps.google.com/?q=Centro+Universitário+UNIFAFIBE+Bebedouro+SP",
+  endereco: "Centro Universitário UNIFAFIBE — Bebedouro/SP",
+  maps: "https://maps.google.com/?q=Centro+Universit ário+UNIFAFIBE+Bebedouro+SP",
 };
 
 // ─── Política de Reembolso ────────────────────────────────────────────────────

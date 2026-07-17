@@ -62,9 +62,6 @@ export function Contato() {
           <div className="flex flex-col items-center gap-3 text-center px-6">
             <MapPin className="h-10 w-10 text-primary" />
             <p className="font-display text-lg font-bold text-foreground">
-              Anfiteatro 1 — UNIFAFIBE
-            </p>
-            <p className="max-w-[280px] font-body text-sm text-muted-foreground">
               {contato.endereco}
             </p>
             <a
