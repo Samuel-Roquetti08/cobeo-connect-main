@@ -295,6 +295,7 @@ export const palestrantes = [
     especialidade: "HMI / Odontopediatria",
     instituicao: "São Leopoldo Mandic",
     tag: "HMI · Mandic",
+    objectPosition: "center 30%",
   },
   {
     nome: "Prof. Dr. Marcelo Monnazzi",
@@ -323,6 +324,7 @@ export const palestrantes = [
     especialidade: "Odontologia Hospitalar",
     instituicao: "FUNFARME / Hospital Austa",
     tag: "Hospitalar · FUNFARME",
+    objectPosition: "center 30%",
   },
   {
     nome: "Prof. Me. Renan Souza",
@@ -344,6 +346,7 @@ export const palestrantes = [
     especialidade: "Implantodontia",
     instituicao: null,
     tag: "Implantodontia",
+    objectPosition: "center 30%",
   },
   {
     nome: "Prof. Dr. Renato Assis Machado",
@@ -358,6 +361,7 @@ export const palestrantes = [
     especialidade: "Odontologia Legal",
     instituicao: "FORP-USP",
     tag: "Legal · FORP-USP",
+    objectPosition: "center 30%",
   },
   {
     nome: "Prof. Dr. Matheus Herreira Ferreira",
@@ -365,6 +369,7 @@ export const palestrantes = [
     especialidade: "Dor Orofacial",
     instituicao: "FORP-USP",
     tag: "Dor Orofacial · USP",
+    objectPosition: "center 30%",
   },
   {
     nome: "Prof. Dr. Silvio Bellini",
@@ -437,6 +442,21 @@ export const INGRESSO_LABELS: Record<IngressoId, string> = {
   palestra: "Palestra Avulsa",
   dia: "1 Dia do Congresso",
   completo: "3 Dias Completos",
+};
+
+// ─── Tipo: Palestrante ────────────────────────────────────────────────────────
+export type Palestrante = {
+  nome: string;
+  foto: string | null;
+  especialidade: string;
+  instituicao: string | null;
+  tag: string;
+  /**
+   * Ponto focal da foto para o recorte circular (CSS object-position).
+   * Ex: "center 30%" para descer o rosto no círculo.
+   * Omitido = "center" (padrão).
+   */
+  objectPosition?: string;
 };
 
 export const palestrasAvulsas = cursos.map((c) => ({

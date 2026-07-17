@@ -32,6 +32,7 @@ export function Palestrantes() {
                     src={p.foto}
                     alt={p.nome}
                     className="h-full w-full rounded-full object-cover"
+                    style={{ objectPosition: p.objectPosition ?? "center" }}
                   />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center rounded-full bg-primary/10 font-display text-2xl font-bold text-primary">
