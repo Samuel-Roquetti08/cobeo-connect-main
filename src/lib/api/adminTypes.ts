@@ -143,3 +143,25 @@ export interface ElegivelCertificado {
   cursosPresentes: number;
   elegivel: boolean;
 }
+
+// ─── Elegibilidade do jantar de encerramento (T5) ─────────────────────────────
+// Comprar não basta: elegível = comprou o jantar E compareceu a todos os
+// cursos que comprou (via check-ins em `presencas`). cursosFaltantes traz os
+// títulos dos cursos comprados sem presença — é o "motivo" exibido na porta.
+export interface ElegivelJantar {
+  inscritoId: string;
+  codigoInscricao: string;
+  pedidoId: string;
+  nome: string;
+  email: string;
+  comprouJantar: boolean;
+  opcaoJantar: JantarOpcao;
+  cursosComprados: number;
+  cursosPresentes: number;
+  cursosFaltantes: string[];
+  elegivelJantar: boolean;
+  jantarCheckInEm: string | null;
+  jantarCheckInPor: string | null;
+  jantarCheckInOverride: boolean;
+  jantarCheckInMotivo: string | null;
+}

@@ -22,6 +22,7 @@ import { Route as AdminDashboardRouteImport } from './routes/admin.dashboard'
 import { Route as AdminCuponsRouteImport } from './routes/admin.cupons'
 import { Route as AdminCrachasRouteImport } from './routes/admin.crachas'
 import { Route as AdminConfiguracoesRouteImport } from './routes/admin.configuracoes'
+import { Route as AdminCheckinJantarRouteImport } from './routes/admin.checkin-jantar'
 import { Route as AdminCheckinRouteImport } from './routes/admin.checkin'
 import { Route as AdminCertificadosRouteImport } from './routes/admin.certificados'
 
@@ -90,6 +91,11 @@ const AdminConfiguracoesRoute = AdminConfiguracoesRouteImport.update({
   path: '/admin/configuracoes',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminCheckinJantarRoute = AdminCheckinJantarRouteImport.update({
+  id: '/admin/checkin-jantar',
+  path: '/admin/checkin-jantar',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminCheckinRoute = AdminCheckinRouteImport.update({
   id: '/admin/checkin',
   path: '/admin/checkin',
@@ -105,6 +111,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin/certificados': typeof AdminCertificadosRoute
   '/admin/checkin': typeof AdminCheckinRoute
+  '/admin/checkin-jantar': typeof AdminCheckinJantarRoute
   '/admin/configuracoes': typeof AdminConfiguracoesRoute
   '/admin/crachas': typeof AdminCrachasRoute
   '/admin/cupons': typeof AdminCuponsRoute
@@ -122,6 +129,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin/certificados': typeof AdminCertificadosRoute
   '/admin/checkin': typeof AdminCheckinRoute
+  '/admin/checkin-jantar': typeof AdminCheckinJantarRoute
   '/admin/configuracoes': typeof AdminConfiguracoesRoute
   '/admin/crachas': typeof AdminCrachasRoute
   '/admin/cupons': typeof AdminCuponsRoute
@@ -140,6 +148,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/admin/certificados': typeof AdminCertificadosRoute
   '/admin/checkin': typeof AdminCheckinRoute
+  '/admin/checkin-jantar': typeof AdminCheckinJantarRoute
   '/admin/configuracoes': typeof AdminConfiguracoesRoute
   '/admin/crachas': typeof AdminCrachasRoute
   '/admin/cupons': typeof AdminCuponsRoute
@@ -159,6 +168,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin/certificados'
     | '/admin/checkin'
+    | '/admin/checkin-jantar'
     | '/admin/configuracoes'
     | '/admin/crachas'
     | '/admin/cupons'
@@ -176,6 +186,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin/certificados'
     | '/admin/checkin'
+    | '/admin/checkin-jantar'
     | '/admin/configuracoes'
     | '/admin/crachas'
     | '/admin/cupons'
@@ -193,6 +204,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin/certificados'
     | '/admin/checkin'
+    | '/admin/checkin-jantar'
     | '/admin/configuracoes'
     | '/admin/crachas'
     | '/admin/cupons'
@@ -211,6 +223,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminCertificadosRoute: typeof AdminCertificadosRoute
   AdminCheckinRoute: typeof AdminCheckinRoute
+  AdminCheckinJantarRoute: typeof AdminCheckinJantarRoute
   AdminConfiguracoesRoute: typeof AdminConfiguracoesRoute
   AdminCrachasRoute: typeof AdminCrachasRoute
   AdminCuponsRoute: typeof AdminCuponsRoute
@@ -318,6 +331,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminConfiguracoesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/checkin-jantar': {
+      id: '/admin/checkin-jantar'
+      path: '/admin/checkin-jantar'
+      fullPath: '/admin/checkin-jantar'
+      preLoaderRoute: typeof AdminCheckinJantarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/checkin': {
       id: '/admin/checkin'
       path: '/admin/checkin'
@@ -339,6 +359,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminCertificadosRoute: AdminCertificadosRoute,
   AdminCheckinRoute: AdminCheckinRoute,
+  AdminCheckinJantarRoute: AdminCheckinJantarRoute,
   AdminConfiguracoesRoute: AdminConfiguracoesRoute,
   AdminCrachasRoute: AdminCrachasRoute,
   AdminCuponsRoute: AdminCuponsRoute,

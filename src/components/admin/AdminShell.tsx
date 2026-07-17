@@ -1,7 +1,7 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard, Users, FileText, Tag, Download,
-  Settings, LogOut, Menu, X, BadgeCheck, ScanLine, GraduationCap,
+  Settings, LogOut, Menu, X, BadgeCheck, ScanLine, GraduationCap, Wine,
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { useAdminAuth } from "@/lib/adminAuth";
@@ -14,6 +14,7 @@ const NAV_GESTAO = [
   { to: "/admin/cupons",       label: "Cupons",               icon: Tag },
   { to: "/admin/crachas",      label: "Crachás",              icon: BadgeCheck },
   { to: "/admin/checkin",      label: "Check-in",             icon: ScanLine },
+  { to: "/admin/checkin-jantar", label: "Check-in Jantar",    icon: Wine },
   { to: "/admin/certificados", label: "Certificados",         icon: GraduationCap },
   { to: "/admin/exportar",     label: "Exportar Dados",       icon: Download },
 ];
@@ -25,6 +26,7 @@ const PAGE_TITLES: Record<string, string> = {
   "/admin/cupons":       "Cupons",
   "/admin/crachas":      "Crachás",
   "/admin/checkin":      "Check-in · Controle de Presença",
+  "/admin/checkin-jantar": "Check-in · Jantar de Encerramento",
   "/admin/certificados": "Certificados",
   "/admin/exportar":     "Exportar Dados",
   "/admin/configuracoes":"Configurações",

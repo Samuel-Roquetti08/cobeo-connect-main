@@ -23,6 +23,7 @@ import type {
   JantarOpcao,
   CupomCategoria,
   ElegivelCertificado,
+  ElegivelJantar,
 } from "./adminTypes";
 
 // ─── INSCRITOS ───────────────────────────────────────────────────────────────
@@ -383,6 +384,79 @@ export async function registrarPresenca(
     .from("presencas")
     .insert({ inscrito_id: inscritoId, curso_ref: cursoRef, confirmado_por: confirmadoPor });
   if (error) throw error;
+}
+
+// ─── CHECK-IN DO JANTAR (T5) ───────────────────────────────────────────────────
+// Busca via vw_elegiveis_jantar (supabase/sql/002_checkin_jantar.sql), que já
+// traz comprado x presente calculado no banco. Mesmo padrão de busca de
+// buscarParaCheckin: código exato primeiro, depois nome/e-mail.
+function mapElegivelJantar(r: Record<string, unknown>): ElegivelJantar {
+  return {
+    inscritoId: r.inscrito_id as string,
+    codigoInscricao: r.codigo_inscricao as string,
+    pedidoId: r.pedido_id as string,
+    nome: r.nome as string,
+    email: r.email as string,
+    comprouJantar: r.comprou_jantar as boolean,
+    opcaoJantar: r.opcao_jantar as JantarOpcao,
+    cursosComprados: r.cursos_comprados as number,
+    cursosPresentes: r.cursos_presentes as number,
+    cursosFaltantes: (r.cursos_faltantes as string[]) ?? [],
+    elegivelJantar: r.elegivel_jantar as boolean,
+    jantarCheckInEm: r.jantar_check_in_em as string | null,
+    jantarCheckInPor: r.jantar_check_in_por as string | null,
+    jantarCheckInOverride: r.jantar_check_in_override as boolean,
+    jantarCheckInMotivo: r.jantar_check_in_motivo as string | null,
+  };
+}
+
+export async function buscarParaCheckinJantar(termo: string): Promise<ElegivelJantar | null> {
+  const t = termo.trim();
+  if (!t) return null;
+
+  const { data: byCode } = await supabase
+    .from("vw_elegiveis_jantar")
+    .select("*")
+    .ilike("codigo_inscricao", t)
+    .maybeSingle();
+  if (byCode) return mapElegivelJantar(byCode);
+
+  const { data: byNomeOuEmail } = await supabase
+    .from("vw_elegiveis_jantar")
+    .select("*")
+    .or(`nome.ilike.%${t}%,email.ilike.%${t}%`)
+    .limit(1)
+    .maybeSingle();
+  if (byNomeOuEmail) return mapElegivelJantar(byNomeOuEmail);
+
+  return null;
+}
+
+// Idempotente por natureza: o `.is("jantar_check_in_em", null)` faz o UPDATE
+// não afetar nenhuma linha se já houver check-in — dois cliques (ou dois
+// fiscais) não sobrescrevem o registro original. Retorna null se não havia
+// check-in prévio pra fazer (já confirmado — a UI trata isso antes de chamar).
+export async function registrarCheckinJantar(
+  inscritoId: string,
+  confirmadoPor: string,
+  override: boolean,
+  motivo: string | null,
+): Promise<void> {
+  const { data, error } = await supabase
+    .from("inscritos")
+    .update({
+      jantar_check_in_em: new Date().toISOString(),
+      jantar_check_in_por: confirmadoPor,
+      jantar_check_in_override: override,
+      jantar_check_in_motivo: motivo,
+    })
+    .eq("id", inscritoId)
+    .is("jantar_check_in_em", null)
+    .select("id");
+  if (error) throw error;
+  if (!data || data.length === 0) {
+    throw new Error("Este participante já fez check-in no jantar.");
+  }
 }
 
 // ─── CRACHÁS ─────────────────────────────────────────────────────────────────
