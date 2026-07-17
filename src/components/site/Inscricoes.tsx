@@ -5,6 +5,7 @@ import {
   Upload, FileText, ChevronDown, Plus, Info, ShieldCheck, AlertTriangle,
 } from "lucide-react";
 import { SectionTitle } from "./SectionTitle";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/lib/supabaseClient";
 import {
   cursos, categorias, jantar, trabalho as trabalhoConfig,
@@ -73,6 +74,11 @@ export function Inscricoes() {
   const [coupon, setCoupon] = useState<CouponState>(INITIAL_COUPON);
   const [methodEvento, setMethodEvento] = useState<Method>("pix");
 
+  // T7: modal "vai apresentar trabalho?" antes de criar o pedido do evento.
+  // Fica aqui (não em FlowEvento) porque FlowEvento desmonta ao trocar de aba —
+  // sem isso, a resposta seria esquecida a cada troca e o modal reapareceria.
+  const [perguntaTrabalhoRespondida, setPerguntaTrabalhoRespondida] = useState(false);
+
   // Estado do FlowTrabalho
   const [stepTrabalho, setStepTrabalho] = useState(0);
   const [coauthors, setCoauthors] = useState<string[]>([]);
@@ -122,6 +128,9 @@ export function Inscricoes() {
                   method={methodEvento} setMethod={setMethodEvento}
                   inscricoesBloqueadas={estado.inscricoesBloqueadas}
                   jantarBloqueado={estado.jantarBloqueado}
+                  perguntaTrabalhoRespondida={perguntaTrabalhoRespondida}
+                  setPerguntaTrabalhoRespondida={setPerguntaTrabalhoRespondida}
+                  onQuerSubmeterTrabalho={() => setTab("trabalho")}
                 />
               </motion.div>
             ) : (
@@ -275,6 +284,51 @@ function PoliticaPrivacidadeModal({ onClose }: { onClose: () => void }) {
   );
 }
 
+/* ── Modal "vai apresentar trabalho?" antes do checkout do evento (T7) ─────── */
+function TrabalhoAcademicoModal({ open, onOpenChange, onContinuarPagamento, onQuerSubmeter }: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onContinuarPagamento: () => void;
+  onQuerSubmeter: () => void;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="font-display">Você também vai apresentar um trabalho?</DialogTitle>
+        </DialogHeader>
+        <p className="font-body text-sm text-muted-foreground">
+          A submissão de trabalho acadêmico é feita na aba "Trabalho Acadêmico" e tem valor
+          separado de R$ 70,00.
+        </p>
+        <div className="flex items-start gap-2.5 rounded-lg border border-gold/50 bg-gold/10 px-3 py-2.5">
+          <AlertTriangle className="h-4 w-4 shrink-0 text-gold" aria-hidden="true" />
+          <p className="font-body text-xs text-[#8a6d1a]">
+            Atenção: a submissão é um pagamento separado da inscrição no evento. Se quiser fazer
+            as duas coisas, você fará dois pagamentos.
+          </p>
+        </div>
+        <DialogFooter className="sm:flex-row sm:gap-2">
+          <button
+            type="button"
+            onClick={onContinuarPagamento}
+            className="flex-1 rounded-md border border-border px-4 py-2.5 font-body text-sm font-semibold text-foreground transition-colors hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            Não, continuar para pagamento
+          </button>
+          <button
+            type="button"
+            onClick={onQuerSubmeter}
+            className="flex-1 rounded-md bg-primary px-4 py-2.5 font-body text-sm font-semibold text-white transition-colors hover:bg-[#8B1515] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            Sim, quero submeter um trabalho
+          </button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 /* ============================================================
    FLOW: EVENTO
    ============================================================ */
@@ -291,6 +345,9 @@ interface FlowEventoProps {
   method: Method; setMethod: (v: Method) => void;
   inscricoesBloqueadas: boolean;
   jantarBloqueado: boolean;
+  perguntaTrabalhoRespondida: boolean;
+  setPerguntaTrabalhoRespondida: (v: boolean) => void;
+  onQuerSubmeterTrabalho: () => void;
 }
 
 function FlowEvento({
@@ -303,10 +360,12 @@ function FlowEvento({
   coupon, setCoupon,
   method, setMethod,
   inscricoesBloqueadas, jantarBloqueado,
+  perguntaTrabalhoRespondida, setPerguntaTrabalhoRespondida, onQuerSubmeterTrabalho,
 }: FlowEventoProps) {
 
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [showTrabalhoModal, setShowTrabalhoModal] = useState(false);
 
   if (inscricoesBloqueadas) {
     return <InscricoesBloqueadasAviso />;
@@ -424,6 +483,29 @@ function FlowEvento({
       setSubmitError((e as Error)?.message ?? "Não foi possível processar seu pedido. Tente novamente.");
       setSubmitting(false);
     }
+  }
+
+  // T7: intercepta o clique final antes de criar o pedido do evento — pergunta
+  // uma única vez por sessão de preenchimento se o participante também vai
+  // submeter trabalho, já que a submissão é uma aba fácil de não notar.
+  function handleIrParaPagamento() {
+    if (!perguntaTrabalhoRespondida) {
+      setShowTrabalhoModal(true);
+      return;
+    }
+    handleConfirmarPagamento();
+  }
+
+  function handleModalContinuarPagamento() {
+    setPerguntaTrabalhoRespondida(true);
+    setShowTrabalhoModal(false);
+    handleConfirmarPagamento();
+  }
+
+  function handleModalQuerSubmeter() {
+    setPerguntaTrabalhoRespondida(true);
+    setShowTrabalhoModal(false);
+    onQuerSubmeterTrabalho();
   }
 
   // Linhas do resumo do pedido
@@ -691,13 +773,20 @@ function FlowEvento({
               total={total}
               labelLinha={`${cursosSelecionados.length} curso${cursosSelecionados.length > 1 ? "s" : ""}${jantarOpcao ? " + Jantar" : ""}`}
               onBack={() => setStep(0)}
-              onConfirm={handleConfirmarPagamento}
+              onConfirm={handleIrParaPagamento}
               submitting={submitting}
               error={submitError}
             />
           </motion.div>
         )}
       </AnimatePresence>
+
+      <TrabalhoAcademicoModal
+        open={showTrabalhoModal}
+        onOpenChange={setShowTrabalhoModal}
+        onContinuarPagamento={handleModalContinuarPagamento}
+        onQuerSubmeter={handleModalQuerSubmeter}
+      />
     </div>
   );
 }
