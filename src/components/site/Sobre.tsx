@@ -46,15 +46,12 @@ export function Sobre() {
             <motion.p variants={fadeUp}>
               O II COBEO reúne estudantes, profissionais e pesquisadores da odontologia
               em três dias de imersão científica, com palestras de referências nacionais,
-              workshops práticos e apresentações de trabalhos acadêmicos. Lorem ipsum dolor
-              sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut
-              labore et dolore magna aliqua.
+              workshops práticos e apresentações de trabalhos acadêmicos.
             </motion.p>
             <motion.p variants={fadeUp}>
               Promovido pelo curso de Odontologia da UNIFAFIBE, o congresso aproxima
               academia e clínica, apresentando as mais recentes inovações em técnicas,
-              materiais e gestão da prática odontológica. Ut enim ad minim veniam, quis
-              nostrud exercitation ullamco laboris.
+              materiais e gestão da prática odontológica.
             </motion.p>
             <motion.div
               variants={fadeUp}
