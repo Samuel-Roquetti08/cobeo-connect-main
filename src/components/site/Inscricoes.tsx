@@ -8,7 +8,7 @@ import { SectionTitle } from "./SectionTitle";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/lib/supabaseClient";
 import {
-  cursos, categorias, jantar, trabalho as trabalhoConfig,
+  cursos, categorias, jantar, trabalho as trabalhoConfig, FORMATO_TRABALHO_LABELS,
   type CategoriaId, type CursoId, type JantarOpcaoId,
 } from "@/data/event";
 import {
@@ -999,7 +999,7 @@ function FlowTrabalho({
                 >
                   <option value="">Selecione...</option>
                   {trabalhoConfig.formatos.map((f) => (
-                    <option key={f} value={f}>{f}</option>
+                    <option key={f} value={f}>{FORMATO_TRABALHO_LABELS[f]}</option>
                   ))}
                 </select>
               </Field>
@@ -1007,11 +1007,43 @@ function FlowTrabalho({
 
             <FileUpload file={file} onChange={setFile} />
 
-            <Accordion title="Instruções para Formatação">
-              <p className="text-muted-foreground">
-                As instruções de formatação serão disponibilizadas em breve. Em caso de dúvidas, entre em contato pelo e-mail cobeounifafibe@gmail.com.
-              </p>
-            </Accordion>
+            <div className="space-y-2">
+              <Accordion title="Datas Importantes">
+                <ul className="list-disc space-y-1 pl-4 text-muted-foreground">
+                  {trabalhoConfig.normas.datasImportantes.map((item, i) => <li key={i}>{item}</li>)}
+                </ul>
+              </Accordion>
+              <Accordion title="Documentos Exigidos por Categoria">
+                <ul className="list-disc space-y-1 pl-4 text-muted-foreground">
+                  {trabalhoConfig.normas.documentosPorCategoria.map((item, i) => <li key={i}>{item}</li>)}
+                </ul>
+              </Accordion>
+              <Accordion title="Formatação do Resumo">
+                <ul className="list-disc space-y-1 pl-4 text-muted-foreground">
+                  {trabalhoConfig.normas.formatacaoResumo.map((item, i) => <li key={i}>{item}</li>)}
+                </ul>
+              </Accordion>
+              <Accordion title="Critérios de Avaliação">
+                <ul className="list-disc space-y-1 pl-4 text-muted-foreground">
+                  {trabalhoConfig.normas.avaliacao.map((item, i) => <li key={i}>{item}</li>)}
+                </ul>
+              </Accordion>
+              <Accordion title="Apresentação Oral">
+                <ul className="list-disc space-y-1 pl-4 text-muted-foreground">
+                  {trabalhoConfig.normas.apresentacaoOral.map((item, i) => <li key={i}>{item}</li>)}
+                </ul>
+              </Accordion>
+              <Accordion title="Apresentação em Painel">
+                <ul className="list-disc space-y-1 pl-4 text-muted-foreground">
+                  {trabalhoConfig.normas.apresentacaoPainel.map((item, i) => <li key={i}>{item}</li>)}
+                </ul>
+              </Accordion>
+              <Accordion title="Solicitação de Reembolso">
+                <ul className="list-disc space-y-1 pl-4 text-muted-foreground">
+                  {trabalhoConfig.normas.reembolso.map((item, i) => <li key={i}>{item}</li>)}
+                </ul>
+              </Accordion>
+            </div>
 
             <PrimaryButton
               disabled={!work.titulo || !work.categoria || !work.modalidade || !work.formato || !file}

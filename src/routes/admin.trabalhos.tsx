@@ -6,7 +6,14 @@ import { Search, Download, Eye, X, Paperclip, Loader2, AlertCircle, RefreshCw } 
 import { useTrabalhos } from "@/lib/api/adminHooks";
 import { getTrabalhoDownloadUrl } from "@/lib/api/adminData";
 import { type Trabalho, type StatusPagamento, STATUS_LABELS } from "@/lib/api/adminTypes";
+import { FORMATO_TRABALHO_LABELS } from "@/data/event";
 import { toast } from "sonner";
+
+// O banco grava o formato como "Pôster" (valor interno — ver event.ts); o
+// rótulo exibido ao admin acompanha o que o site já mostra ao participante.
+function formatoLabel(formato: string): string {
+  return (FORMATO_TRABALHO_LABELS as Record<string, string>)[formato] ?? formato;
+}
 
 export const Route = createFileRoute("/admin/trabalhos")({
   head: () => ({ meta: [{ title: "Trabalhos · Admin · II COBEO" }] }),
@@ -70,7 +77,7 @@ function TrabalhosPage() {
         "E-mail": t.responsavelEmail,
         "Categoria": t.categoria,
         "Modalidade": t.modalidade,
-        "Formato": t.formato,
+        "Formato": formatoLabel(t.formato),
         "Coautores": t.coautores.join(" | "),
         "Arquivo": t.arquivoNome ?? "—",
         "Status": STATUS_LABELS[t.status],
@@ -194,7 +201,7 @@ function TrabalhosPage() {
                   </td>
                   <td className="px-4 py-3 text-[12px] text-[#6b6b6b]">{t.categoria}</td>
                   <td className="px-4 py-3 text-[12px] text-[#6b6b6b]">{t.modalidade}</td>
-                  <td className="px-4 py-3 text-[12px] text-[#6b6b6b]">{t.formato}</td>
+                  <td className="px-4 py-3 text-[12px] text-[#6b6b6b]">{formatoLabel(t.formato)}</td>
                   <td className="px-4 py-3">
                     {t.arquivoPath ? (
                       <span className="inline-flex items-center gap-1.5 rounded bg-[#dbeafe] px-2 py-0.5 text-[11px] font-medium text-[#1e40af]">
@@ -272,7 +279,7 @@ function TrabalhoDrawer({ item, onClose }: { item: Trabalho; onClose: () => void
           <Sec title="Dados do Trabalho">
             <KV k="Categoria" v={item.categoria} />
             <KV k="Modalidade" v={item.modalidade} />
-            <KV k="Formato" v={item.formato} />
+            <KV k="Formato" v={formatoLabel(item.formato)} />
             <KV k="Data submissão" v={new Date(item.createdAt).toLocaleString("pt-BR")} />
             <div className="mt-2 text-[12px] text-[#6b6b6b]">{item.resumo}</div>
           </Sec>

@@ -269,6 +269,18 @@ export const jantar = {
 export type JantarOpcaoId = typeof jantar.opcoes[number]["id"];
 
 // ─── Submissão de Trabalhos ───────────────────────────────────────────────────
+// Normas extraídas de COBEO 2026. DADOS DOS CURSOS E PALESTRANTES (1).docx
+// (conteúdo enviado pelo Samuel em 17/07 — apesar do nome do arquivo, o texto
+// é sobre normas de submissão/apresentação de trabalhos, não sobre
+// palestrantes). O documento era de uma edição anterior reaproveitado; a
+// menção a "submissão presencial dá direito a um curso gratuito" foi
+// confirmada como desatualizada e não entra aqui.
+//
+// formatos: valor interno mantido como "Pôster" (schema do banco tem CHECK
+// constraint em trabalhos.formato — não seria seguro trocar sem migração e
+// sem rodar a bateria de testes T8). O rótulo exibido ao usuário usa
+// FORMATO_TRABALHO_LABELS, que troca a exibição para "Painel" sem tocar no
+// valor gravado.
 export const trabalho = {
   valor: 70,
   categorias: [
@@ -283,7 +295,66 @@ export const trabalho = {
   observacoes: [
     "Os resumos dos trabalhos serão publicados na Revista UNIFAFIBE.",
     "Os melhores trabalhos serão premiados no Jantar de Encerramento (09/10).",
+    "Todos os trabalhos apresentados recebem certificado por e-mail.",
   ],
+  normas: {
+    datasImportantes: [
+      "Período de submissões: 20/07/2026 a 06/09/2026",
+      "Divulgação dos trabalhos aprovados: 07/09/2026",
+      "Apresentação de trabalhos presenciais: 07 a 09/10/2026 (18h às 19h)",
+      "Apresentação de trabalhos on-line (síncrona): 08/10/2026 (9h às 11h)",
+      "Premiações (menções honrosas): 09/10/2026 (noite)",
+      "Publicação dos resumos nos Anais (formato digital): até 1 mês após o término do evento",
+    ],
+    documentosPorCategoria: [
+      "Revisão Sistemática: anexar registro no PROSPERO.",
+      "Pesquisa Científica (in vivo ou in vitro): estudos in vivo devem anexar comprovante de aprovação de Comitê de Ética em Pesquisa (CEP) em Seres Humanos ou em Animais.",
+      "Relato de Caso Clínico ou Série de Casos: anexar o Termo de Consentimento Livre e Esclarecido (TCLE) assinado pelo(s) paciente(s). A identidade do(s) paciente(s) deve ser preservada no corpo do estudo.",
+      "Revisão de Literatura: anexar termo de dispensa do comitê de ética em pesquisa.",
+      "Extensão Universitária: anexar termo de dispensa do comitê de ética (caso não apresente resultados) ou a aprovação do CEP (caso apresente).",
+      "A omissão desses documentos implica na desclassificação do trabalho.",
+    ],
+    formatacaoResumo: [
+      "Template disponível no site do congresso — o resumo deve ser preenchido nele e salvo em PDF.",
+      "Título: em português, negrito, máximo de 120 caracteres, refletindo o objetivo do estudo. Apenas a primeira letra maiúscula.",
+      "Autores: nomes completos separados por vírgula, com o último sobrenome em maiúsculas. O primeiro autor deve ser o apresentador. Máximo de 8 autores (12 para Extensão Universitária).",
+      "Afiliação: instituição do autor apresentador (nome completo, sigla, cidade, estado e país) + e-mail do apresentador (o mesmo cadastrado na inscrição).",
+      "Corpo do resumo: português, fonte Arial 12, máximo de 1750 caracteres, justificado. Deve conter Introdução, Objetivo, Método (ou Conduta Clínica), Resultados e Conclusão. Sem imagens, abreviações não universais ou referências.",
+      "É obrigatório informar o número do CAAE (pesquisa em humanos), CEUA (pesquisa em animais), TCLE (relato de caso) ou registro no PROSPERO (revisão sistemática) — ou declarar que não há necessidade desse documento.",
+      "Descritores: indicar 3 palavras-chave, separadas por ponto e vírgula (consultar MeSH/DeCS).",
+      "Indicar 1 área da odontologia e o tipo de apresentação (oral ou painel).",
+      "Os dados não podem ser alterados após a submissão. Erros nos nomes dos autores ou no texto são de responsabilidade do autor — não há reemissão de certificado nem alteração posterior nos anais.",
+    ],
+    avaliacao: [
+      "Avaliação por três avaliadores; a decisão final é irrevogável.",
+      "Nota final = nota do resumo (0 a 5) + nota da apresentação (0 a 5).",
+      "Critérios: estrutura do resumo, originalidade do tema, metodologia/conduta clínica, presença do CAAE/CEUA/TCLE e adequação de descritores/área.",
+      "São reprovados trabalhos que não seguirem o template, não tiverem objetividade/coerência/qualidade de redação, não tiverem relevância odontológica, ou desrespeitarem direitos humanos/princípios éticos.",
+    ],
+    apresentacaoOral: [
+      "Data, horário e sala/link são enviados por e-mail aos autores.",
+      "Tempo máximo de 10 minutos, seguido de 5 minutos de arguição da banca. Sem limite de slides, desde que o tempo seja respeitado — o descumprimento pode gerar decréscimo de nota ou desclassificação.",
+      "Apresentação em PowerPoint ou Canva, em português, enviada previamente à comissão organizadora por e-mail. Ainda assim, leve uma cópia em pen drive.",
+    ],
+    apresentacaoPainel: [
+      "Data, horário e sala/link são enviados por e-mail aos autores.",
+      "5 minutos para apresentação + 5 minutos para dúvidas da banca.",
+      "Painel físico (presencial): 0,90 × 1,50 m (vertical), fonte mínima 18. Cabeçalho com título, autores completos (último sobrenome em maiúsculas), afiliação, foto e e-mail do apresentador — que deve ser o primeiro autor da lista. Corpo estruturado em Introdução, Objetivo, Método/Conduta Clínica, Resultados e Conclusão.",
+      "Painel on-line: PowerPoint em português, usando o modelo de capa disponível no site, limite de 5 slides (1 capa + 4 de conteúdo). Descumprir o tempo pode gerar decréscimo de nota ou desclassificação.",
+    ],
+    reembolso: [
+      "Solicitações via e-mail: cobeounifafibe@gmail.com.",
+      "Reembolso de 50% até 10/09/2026. Após essa data, não há reembolso.",
+      "Trabalhos não apresentados são desclassificados, não geram certificado e não são publicados nos anais — sem reembolso.",
+    ],
+  },
+};
+
+// Rótulo exibido ao participante — o valor gravado no banco continua sendo o
+// literal do array `formatos` acima (não altere sem migrar o schema).
+export const FORMATO_TRABALHO_LABELS: Record<typeof trabalho.formatos[number], string> = {
+  Oral: "Oral",
+  "Pôster": "Painel",
 };
 
 // ─── Palestrantes ─────────────────────────────────────────────────────────────
