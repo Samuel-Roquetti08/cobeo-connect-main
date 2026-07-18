@@ -365,10 +365,7 @@ export const FORMATO_TRABALHO_LABELS: Record<typeof trabalho.formatos[number], s
 //
 // `id` é estável (não usar índice do array — quebra se a ordem mudar) e
 // alimenta o card expansível de certificações (T4).
-// `certificacoes`: lista fiel ao documento, sem invenção. Paulo Saad está
-// com o trecho pendente — o Samuel vai reenviar (ilegível nos prints
-// recebidos em 18/07); usar CARGA_HORARIA_PENDENTE_LABEL como placeholder
-// visível até chegar.
+// `certificacoes`: lista fiel ao documento, sem invenção.
 export const palestrantes = [
   {
     id: "kelly-moreira",
@@ -500,11 +497,13 @@ export const palestrantes = [
     instituicao: null,
     tag: "Implantodontia",
     objectPosition: "center 30%",
-    // Trecho do documento veio ilegível/cortado nos prints de 18/07
-    // ("Pós-doc - University of Alabama" + algo sobre cursos de
-    // Especialização — fragmentos não confiáveis o suficiente para usar).
-    // Samuel confirmou que vai reenviar mais legível.
-    certificacoes: [CARGA_HORARIA_PENDENTE_LABEL],
+    // Reenviado legível pelo Samuel em 18/07 (o print anterior estava cortado).
+    certificacoes: [
+      "Mestre e Doutor — Depto. de Ortopedia, Unifesp/Escola Paulista de Medicina",
+      "Pós-doc — University of Alabama",
+      "Coordenador dos cursos de Especialização em Implantodontia — FAOA e AORP",
+      "Consultor Científico da Titaniumfix",
+    ],
   },
   {
     id: "renato-assis-machado",
