@@ -358,96 +358,220 @@ export const FORMATO_TRABALHO_LABELS: Record<typeof trabalho.formatos[number], s
 };
 
 // ─── Palestrantes ─────────────────────────────────────────────────────────────
-// Fotos e bios recebidas do Fabiano em COBEO-2026.DADOS-DOS-CURSOS-E-PALESTRANTES.docx
+// Fotos/bios recebidas do Fabiano em COBEO-2026.DADOS-DOS-CURSOS-E-PALESTRANTES.docx
+// (Samuel confirmou em 18/07: o arquivo colado anteriormente com o mesmo nome
+// continha as normas de trabalho — T6 — não os dados de palestrantes; este
+// conteúdo veio à parte, via prints do documento correto).
+//
+// `id` é estável (não usar índice do array — quebra se a ordem mudar) e
+// alimenta o card expansível de certificações (T4).
+// `certificacoes`: lista fiel ao documento, sem invenção. Paulo Saad está
+// com o trecho pendente — o Samuel vai reenviar (ilegível nos prints
+// recebidos em 18/07); usar CARGA_HORARIA_PENDENTE_LABEL como placeholder
+// visível até chegar.
 export const palestrantes = [
   {
+    id: "kelly-moreira",
     nome: "Profa. Dra. Kelly Moreira",
     foto: "/palestrantes/kelly-moreira.jpg",
     especialidade: "HMI / Odontopediatria",
     instituicao: "São Leopoldo Mandic",
     tag: "HMI · Mandic",
     objectPosition: "center 30%",
+    certificacoes: [
+      "20 anos de experiência",
+      "Graduada em Odontologia pela UFMG",
+      "Especialista em Estratégia em Saúde da Família pela UFMG",
+      "Especialista em Odontopediatria pela SLMandic",
+      "Mestre em Odontopediatria pela FOP/UNICAMP",
+      "Doutora em Odontopediatria pela FOP/UNICAMP",
+      "Pós-doutora no HRAC/USP",
+      "Pós-graduada em Estética pela ABO",
+      "Professora da Pós-Graduação na SLMANDIC — Campinas",
+      "Palestrante internacional",
+      "Autora de livros",
+      "Diretora na IOPED e Odontopediatra na Politano Odontopediatria e Ortodontia e HM Kids",
+    ],
   },
   {
+    id: "marcelo-monnazzi",
     nome: "Prof. Dr. Marcelo Monnazzi",
     foto: "/palestrantes/marcelo-monnazzi.jpg",
     especialidade: "Cirurgia Buco-Maxilo-Facial / Traumatologia",
     instituicao: "FOAR-UNESP",
     tag: "CTBMF · FOAR-UNESP",
+    certificacoes: [
+      "Residência em CTBMF — UNESP",
+      "Mestrado em CTBMF — Unimar",
+      "Doutorado em Cirurgia Plástica — Unicamp",
+      "Pós-doutorado em CTBMF — USP",
+      "Fellowship em Dallas, Frankfurt e Munique",
+      "Professor de CTBMF — UNESP Araraquara",
+    ],
   },
   {
+    id: "luiz-fernando-oliveira",
     nome: "Prof. Dr. Luiz Fernando de Freitas Oliveira",
     foto: "/palestrantes/luiz-fernando-oliveira.jpg",
     especialidade: "Endodontia",
     instituicao: "FOAR-UNESP",
     tag: "Endodontia · UNESP",
+    certificacoes: [
+      "Mestre e Especialista em Endodontia",
+      "Especialista em Reabilitação Oral",
+      "Especialista em Implantodontia",
+      "Professor da Especialização em Endodontia — UNESP Araraquara",
+    ],
   },
   {
+    id: "reyna-aguilar-quispe",
     nome: "Profa. Dra. Reyna Aguilar Quispe",
     foto: "/palestrantes/reyna-aguilar-quispe.jpg",
     especialidade: "Odontologia Hospitalar / Fissura Labiopalatina",
     instituicao: "UNORTE / FUNFARME",
     tag: "Hospitalar · UNORTE",
+    certificacoes: [
+      "Cirurgiã-dentista pela UMSA/UNESP",
+      "Especialista em Odontopediatria pelo Hospital de Anomalias Craniofaciais (HRAC-USP)",
+      "Especialista em Odontologia Hospitalar",
+      "Habilitada em laserterapia em Odontologia",
+      "Mestre em Estomatologia e Biologia Oral — FOB-USP",
+      "Doutora em Estomatologia e Imagenologia Bucomaxilofacial — FOB-USP",
+      "Docente no Centro Universitário do Norte de São Paulo (UNORTE)",
+      "Odontopediatra no Centro Integrado Labiopalatal (CILP) — FUNFARME, Hospital de Base de São José do Rio Preto",
+    ],
   },
   {
+    id: "stela-carolina-aguiar",
     nome: "Dra. Stela Carolina Vasques Baldin Aguiar",
     foto: "/palestrantes/stela-carolina-aguiar.jpg",
     especialidade: "Odontologia Hospitalar",
     instituicao: "FUNFARME / Hospital Austa",
     tag: "Hospitalar · FUNFARME",
     objectPosition: "center 30%",
+    certificacoes: [
+      "Mestre em Ciências Médicas",
+      "Especialista em Odontologia Hospitalar pelo Hospital Israelita Albert Einstein",
+      "MBA em Administração e Economia da Saúde — USP (Ribeirão Preto)",
+      "Habilitação em Laserterapia pelo Hospital Israelita Albert Einstein",
+      "Formação complementar em Odontologia Hospitalar — Hospital Sírio-Libanês (São Paulo)",
+      "Formação complementar em Terapia Intensiva — Hospital das Clínicas (USP)",
+      "Formação complementar em Dentística, Estética e Ortodontia",
+      "Coordenadora Geral do Centro Integrado Labiopalatal (CILP) da FUNFARME, em São José do Rio Preto (SP)",
+      "Cirurgiã-Dentista Hospitalar do Hospital Austa",
+    ],
   },
   {
+    id: "renan-souza",
     nome: "Prof. Me. Renan Souza",
     foto: "/palestrantes/renan-souza.jpg",
     especialidade: "Periodontia / Microcirurgia",
     instituicao: null,
     tag: "Periodontia",
+    certificacoes: [
+      "Graduação — UMESP",
+      "Especialização em Implantodontia — Fundecto-USP",
+      "Mestrado em Periodontia — UNESP",
+      "Aperfeiçoamento em Cirurgia Plástica Periodontal — APCD",
+      "Consultor técnico em Periodontia",
+      "Professor de Fotografia Odontológica",
+    ],
   },
   {
+    id: "alvaro-junqueira",
     nome: "Prof. Dr. Alvaro Augusto Junqueira Júnior",
     foto: "/palestrantes/alvaro-junqueira.jpg",
     especialidade: "Dentística",
     instituicao: "FORP-USP",
     tag: "Dentística · FORP-USP",
+    certificacoes: [
+      "Graduado em Odontologia pela Universidade Federal de Alfenas",
+      "Especialista, Mestre e Doutor em Dentística — FORP-USP",
+      "Professor da Especialização em Dentística e Prótese do IOA-Ribeirão Preto",
+      "Professor convidado das Especializações em Dentística da FORP-USP, ECO Academy e AORP",
+      "Atua em clínica particular em Ribeirão Preto",
+    ],
   },
   {
+    id: "paulo-saad",
     nome: "Prof. Dr. Paulo Saad",
     foto: "/palestrantes/paulo-saad.jpg",
     especialidade: "Implantodontia",
     instituicao: null,
     tag: "Implantodontia",
     objectPosition: "center 30%",
+    // Trecho do documento veio ilegível/cortado nos prints de 18/07
+    // ("Pós-doc - University of Alabama" + algo sobre cursos de
+    // Especialização — fragmentos não confiáveis o suficiente para usar).
+    // Samuel confirmou que vai reenviar mais legível.
+    certificacoes: [CARGA_HORARIA_PENDENTE_LABEL],
   },
   {
+    id: "renato-assis-machado",
     nome: "Prof. Dr. Renato Assis Machado",
     foto: "/palestrantes/renato-assis-machado.jpg",
     especialidade: "Harmonização Orofacial",
     instituicao: "FOP-UNICAMP",
     tag: "Harmonização · UNICAMP",
+    certificacoes: [
+      "Graduado em Odontologia pela Universidade José do Rosário Vellano (Unifenas)",
+      "Especialista em Harmonização Orofacial — IOA São Paulo",
+      "Mestrado e Doutorado em Estomatopatologia — FOP/Unicamp",
+      "Pós-Doutorado no HRAC/USP",
+      "Professor colaborador no Departamento de Diagnóstico Oral (FOP/UNICAMP)",
+      "Autor de 121 artigos",
+      "Professor na Universidade São Judas Tadeu (USJT), curso de Odontologia",
+      "Coordenador de Especialização em Harmonização Orofacial — IOA Piracicaba e Campinas, UNIFENAS e USJT",
+      "Professor no Centro Universitário Ingá (UNIGÁ), mestrado em Harmonização Orofacial",
+    ],
   },
   {
+    id: "ricardo-henrique-silva",
     nome: "Prof. Dr. Ricardo Henrique Alves da Silva",
     foto: "/palestrantes/ricardo-henrique-silva.jpg",
     especialidade: "Odontologia Legal",
     instituicao: "FORP-USP",
     tag: "Legal · FORP-USP",
     objectPosition: "center 30%",
+    certificacoes: [
+      "Cirurgião-dentista graduado pela USP-Bauru",
+      "Especialista em Odontologia Legal. Mestrado pela USP-Bauru",
+      "Doutorado pela USP-São Paulo",
+      "Livre-Docência pela USP-Ribeirão Preto",
+      "Professor responsável pela área de Odontologia Legal na FORP-USP",
+      "Vice-Coordenador do Grupo de Trabalho de Odontologia Legal da INTERPOL",
+      "Vice-Presidente da IOFOS — International Organization for Forensic Odonto-Stomatology",
+      "Perito Judicial em colaboração com diversas comarcas do Tribunal de Justiça do Estado de São Paulo",
+    ],
   },
   {
+    id: "matheus-herreira-ferreira",
     nome: "Prof. Dr. Matheus Herreira Ferreira",
     foto: "/palestrantes/matheus-herreira-ferreira.jpg",
     especialidade: "Dor Orofacial",
     instituicao: "FORP-USP",
     tag: "Dor Orofacial · USP",
     objectPosition: "center 30%",
+    certificacoes: [
+      "Professor Doutor da Faculdade de Odontologia de Ribeirão Preto (USP)",
+      "Cirurgião-Dentista pela Universidade Estadual de Maringá",
+      "Mestre e Doutor em Ciências Odontológicas — FOB-USP",
+      "Especialista em Disfunção Temporomandibular e Dor Orofacial — IEO/Bauru",
+    ],
   },
   {
+    id: "silvio-bellini",
     nome: "Prof. Dr. Silvio Bellini",
     foto: "/palestrantes/silvio-bellini.jpg",
     especialidade: "Ortodontia",
     instituicao: "FOB-USP",
     tag: "Ortodontia · USP",
+    certificacoes: [
+      "Graduação — UNESP-Araçatuba",
+      "Especialista em Ortodontia — APCD-Santo André",
+      "Mestre e Doutor em Ortodontia — USP-Bauru",
+      "Professor de Ortodontia — USP-Bauru",
+    ],
   },
 ];
 
