@@ -22,10 +22,10 @@ begin
     where t.relname = 'presencas'
       and c.contype = 'u'
       and (
-        select array_agg(a.attname order by a.attname)
+        select array_agg(a.attname::text order by a.attname)
         from unnest(c.conkey) as k(attnum)
         join pg_attribute a on a.attrelid = c.conrelid and a.attnum = k.attnum
-      ) = array['curso_ref', 'inscrito_id']
+      ) = array['curso_ref', 'inscrito_id']::text[]
   ) into v_exists;
 
   if not v_exists then
