@@ -1,14 +1,18 @@
 import { createFileRoute, useSearch } from "@tanstack/react-router";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { useState, useRef, useEffect, useCallback } from "react";
+import { Html5Qrcode } from "html5-qrcode";
 import {
   QrCode, Search, CheckCircle2, XCircle, Clock, RotateCcw, Loader2,
-  Wine, ShieldAlert,
+  Wine, ShieldAlert, X, CameraOff,
 } from "lucide-react";
 import { buscarParaCheckinJantar, registrarCheckinJantar } from "@/lib/api/adminData";
 import { JANTAR_LABELS, type ElegivelJantar } from "@/lib/api/adminTypes";
 import { useAdminAuth } from "@/lib/adminAuth";
 import { toast } from "sonner";
+
+// Região do DOM onde o html5-qrcode injeta o preview da câmera
+const QR_REGION_ID = "checkin-jantar-qr-region";
 
 export const Route = createFileRoute("/admin/checkin-jantar")({
   head: () => ({ meta: [{ title: "Check-in Jantar · Admin · II COBEO" }] }),
@@ -52,7 +56,10 @@ function CheckinJantarPage() {
   const [registrando, setRegistrando] = useState(false);
   const [showOverride, setShowOverride] = useState(false);
   const [motivoOverride, setMotivoOverride] = useState("");
+  const [scannerOpen, setScannerOpen] = useState(false);
+  const [scannerErro, setScannerErro] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const qrInstanceRef = useRef<Html5Qrcode | null>(null);
 
   const buscar = useCallback(async (q: string) => {
     const term = q.trim();
@@ -81,6 +88,58 @@ function CheckinJantarPage() {
       inputRef.current?.focus();
     }
   }, [search.codigo, buscar]);
+
+  // Câmera do QR Code: só extrai o código e alimenta a MESMA busca já
+  // existente (buscar) — sem lógica de autorização paralela. Requer HTTPS
+  // (ou localhost).
+  useEffect(() => {
+    if (!scannerOpen) return;
+    let cancelled = false;
+    const html5QrCode = new Html5Qrcode(QR_REGION_ID);
+    qrInstanceRef.current = html5QrCode;
+    setScannerErro(null);
+
+    html5QrCode
+      .start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: 250 },
+        (decodedText) => {
+          if (cancelled) return;
+          cancelled = true;
+          let codigoLido = decodedText;
+          try {
+            const url = new URL(decodedText, window.location.origin);
+            codigoLido = url.searchParams.get("codigo") ?? decodedText;
+          } catch {
+            // QR não é uma URL — usa o texto lido diretamente como código
+          }
+          setScannerOpen(false);
+          setQuery(codigoLido);
+          buscar(codigoLido);
+        },
+        () => {
+          // Falha ao decodificar um frame isolado — normal até o QR entrar em foco, ignorar.
+        },
+      )
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        const msg = (err as Error)?.message ?? String(err);
+        setScannerErro(
+          msg.toLowerCase().includes("permission")
+            ? "Permissão de câmera negada. Autorize o acesso à câmera nas configurações do navegador."
+            : "Não foi possível abrir a câmera. Verifique se o site está em HTTPS e se há uma câmera disponível.",
+        );
+      });
+
+    return () => {
+      cancelled = true;
+      const instance = qrInstanceRef.current;
+      qrInstanceRef.current = null;
+      if (instance) {
+        instance.stop().then(() => instance.clear()).catch(() => {});
+      }
+    };
+  }, [scannerOpen, buscar]);
 
   async function confirmarEntrada(override: boolean) {
     if (!found || !user) return;
@@ -161,6 +220,13 @@ function CheckinJantarPage() {
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
               Buscar
             </button>
+            <button
+              onClick={() => setScannerOpen(true)}
+              className="flex items-center gap-2 rounded-md border border-[#731111] px-4 text-sm font-semibold text-[#731111] transition-colors hover:bg-[#731111] hover:text-white"
+            >
+              <QrCode className="h-4 w-4" />
+              Ler QR Code
+            </button>
           </div>
         </div>
 
@@ -201,6 +267,36 @@ function CheckinJantarPage() {
           </div>
         )}
       </div>
+
+      {/* Overlay da câmera de QR Code */}
+      {scannerOpen && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/85 p-6">
+          <div className="flex w-full max-w-sm items-center justify-between pb-3">
+            <p className="text-sm font-semibold text-white">Aponte para o QR do crachá</p>
+            <button
+              onClick={() => setScannerOpen(false)}
+              className="rounded p-1.5 text-white/80 hover:bg-white/10 hover:text-white"
+              aria-label="Fechar câmera"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+          <div id={QR_REGION_ID} className="w-full max-w-sm overflow-hidden rounded-xl bg-black" />
+          {scannerErro && (
+            <div className="mt-4 flex max-w-sm items-start gap-2 rounded-lg border border-red-400 bg-red-950/60 px-4 py-3 text-[13px] text-red-100">
+              <CameraOff className="mt-0.5 h-4 w-4 shrink-0" />
+              {scannerErro}
+            </div>
+          )}
+          <button
+            onClick={() => setScannerOpen(false)}
+            className="mt-4 flex items-center gap-2 rounded-md border border-white/30 px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-white/10"
+          >
+            <RotateCcw className="h-4 w-4" />
+            Cancelar e digitar manualmente
+          </button>
+        </div>
+      )}
     </div>
   );
 }
