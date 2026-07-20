@@ -1,14 +1,18 @@
 import { createFileRoute, useSearch } from "@tanstack/react-router";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { useState, useRef, useEffect, useCallback } from "react";
+import { Html5Qrcode } from "html5-qrcode";
 import {
-  QrCode, Search, CheckCircle2, XCircle, Clock, RotateCcw, Loader2, BookOpen,
+  QrCode, Search, CheckCircle2, XCircle, Clock, RotateCcw, Loader2, BookOpen, X, CameraOff,
 } from "lucide-react";
 import { buscarParaCheckin, registrarPresenca, type InscritoCheckin } from "@/lib/api/adminData";
 import { cursos as cursosEvento } from "@/data/event";
 import { useAdminAuth } from "@/lib/adminAuth";
-import { CATEGORIA_LABELS } from "@/lib/api/adminTypes";
+import { CATEGORIA_LABELS, type PedidoCurso } from "@/lib/api/adminTypes";
 import { toast } from "sonner";
+
+// Região do DOM onde o html5-qrcode injeta o preview da câmera
+const QR_REGION_ID = "checkin-qr-region";
 
 export const Route = createFileRoute("/admin/checkin")({
   head: () => ({ meta: [{ title: "Check-in · Admin · II COBEO" }] }),
@@ -36,7 +40,10 @@ function CheckinPage() {
   const [notFound, setNotFound] = useState(false);
   const [loading, setLoading] = useState(false);
   const [registrando, setRegistrando] = useState(false);
+  const [scannerOpen, setScannerOpen] = useState(false);
+  const [scannerErro, setScannerErro] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const qrInstanceRef = useRef<Html5Qrcode | null>(null);
 
   const buscar = useCallback(async (q: string) => {
     const term = q.trim();
@@ -64,6 +71,59 @@ function CheckinPage() {
       inputRef.current?.focus();
     }
   }, [search.codigo, buscar]);
+
+  // Câmera do QR Code: a leitura só extrai o código e alimenta a MESMA busca
+  // já existente (buscar) — não há lógica de autorização aqui, fonte única
+  // de verdade continua em getEstado/registrarPresenca.
+  // Requer HTTPS (ou localhost) — ver nota no botão "Ler QR Code".
+  useEffect(() => {
+    if (!scannerOpen) return;
+    let cancelled = false;
+    const html5QrCode = new Html5Qrcode(QR_REGION_ID);
+    qrInstanceRef.current = html5QrCode;
+    setScannerErro(null);
+
+    html5QrCode
+      .start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: 250 },
+        (decodedText) => {
+          if (cancelled) return;
+          cancelled = true;
+          let codigoLido = decodedText;
+          try {
+            const url = new URL(decodedText, window.location.origin);
+            codigoLido = url.searchParams.get("codigo") ?? decodedText;
+          } catch {
+            // QR não é uma URL — usa o texto lido diretamente como código
+          }
+          setScannerOpen(false);
+          setQuery(codigoLido);
+          buscar(codigoLido);
+        },
+        () => {
+          // Falha ao decodificar um frame isolado — normal até o QR entrar em foco, ignorar.
+        },
+      )
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        const msg = (err as Error)?.message ?? String(err);
+        setScannerErro(
+          msg.toLowerCase().includes("permission")
+            ? "Permissão de câmera negada. Autorize o acesso à câmera nas configurações do navegador."
+            : "Não foi possível abrir a câmera. Verifique se o site está em HTTPS e se há uma câmera disponível.",
+        );
+      });
+
+    return () => {
+      cancelled = true;
+      const instance = qrInstanceRef.current;
+      qrInstanceRef.current = null;
+      if (instance) {
+        instance.stop().then(() => instance.clear()).catch(() => {});
+      }
+    };
+  }, [scannerOpen, buscar]);
 
   // Determina o estado do inscrito para o curso selecionado
   function getEstado(ins: InscritoCheckin): EstadoCurso {
@@ -159,6 +219,13 @@ function CheckinPage() {
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
               Buscar
             </button>
+            <button
+              onClick={() => setScannerOpen(true)}
+              className="flex items-center gap-2 rounded-md border border-[#731111] px-4 text-sm font-semibold text-[#731111] transition-colors hover:bg-[#731111] hover:text-white"
+            >
+              <QrCode className="h-4 w-4" />
+              Ler QR Code
+            </button>
           </div>
         </div>
 
@@ -172,6 +239,7 @@ function CheckinPage() {
             categoria={found.categoria ? CATEGORIA_LABELS[found.categoria] : "—"}
             cursoTitulo={cursoSelecionado?.titulo ?? ""}
             statusPagamento={found.status}
+            cursosPermitidos={found.cursos}
             onConfirm={confirmarPresenca}
             onReset={resetar}
             registrando={registrando}
@@ -201,17 +269,48 @@ function CheckinPage() {
           </div>
         )}
       </div>
+
+      {/* Overlay da câmera de QR Code */}
+      {scannerOpen && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/85 p-6">
+          <div className="flex w-full max-w-sm items-center justify-between pb-3">
+            <p className="text-sm font-semibold text-white">Aponte para o QR do crachá</p>
+            <button
+              onClick={() => setScannerOpen(false)}
+              className="rounded p-1.5 text-white/80 hover:bg-white/10 hover:text-white"
+              aria-label="Fechar câmera"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+          <div id={QR_REGION_ID} className="w-full max-w-sm overflow-hidden rounded-xl bg-black" />
+          {scannerErro && (
+            <div className="mt-4 flex max-w-sm items-start gap-2 rounded-lg border border-red-400 bg-red-950/60 px-4 py-3 text-[13px] text-red-100">
+              <CameraOff className="mt-0.5 h-4 w-4 shrink-0" />
+              {scannerErro}
+            </div>
+          )}
+          <button
+            onClick={() => setScannerOpen(false)}
+            className="mt-4 flex items-center gap-2 rounded-md border border-white/30 px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-white/10"
+          >
+            <RotateCcw className="h-4 w-4" />
+            Cancelar e digitar manualmente
+          </button>
+        </div>
+      )}
     </div>
   );
 }
 
 function ResultPanel({
   estado, nome, email, codigo, categoria, cursoTitulo, statusPagamento,
-  onConfirm, onReset, registrando,
+  cursosPermitidos, onConfirm, onReset, registrando,
 }: {
   estado: EstadoCurso;
   nome: string; email: string; codigo: string; categoria: string;
   cursoTitulo: string; statusPagamento: string;
+  cursosPermitidos: PedidoCurso[];
   onConfirm: () => void; onReset: () => void; registrando: boolean;
 }) {
   const config = {
@@ -249,6 +348,28 @@ function ResultPanel({
         <Row label="Categoria" value={categoria} />
         <Row label="Curso desta sessão" value={cursoTitulo} />
       </div>
+
+      {estado === "sem_autorizacao" && (
+        <div className="mt-4 w-full max-w-sm rounded-lg border border-red-200 bg-white px-4 py-4 text-left">
+          <p className="text-[13px] font-semibold text-[#1a1a1a]">Este participante tem direito a:</p>
+          {cursosPermitidos.length === 0
+            ? <p className="mt-2 text-[13px] text-[#6b6b6b]">Nenhum curso comprado.</p>
+            : (
+              <ul className="mt-2 space-y-2">
+                {cursosPermitidos.map((c) => {
+                  const evento = cursosEvento.find((ce) => ce.id === c.curso_ref);
+                  return (
+                    <li key={c.id} className="text-[15px] font-medium text-[#1a1a1a]">
+                      • {c.curso_titulo}
+                      {evento && <span className="block text-[13px] font-normal text-[#6b6b6b]">{evento.dia} · {evento.horario}</span>}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          <p className="mt-3 text-[11px] text-[#6b6b6b]">O curso tentado não faz parte do ingresso dele.</p>
+        </div>
+      )}
 
       {estado === "autorizado" && pagamentoPendente && (
         <div className="mt-3 flex items-center gap-2 rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-[13px] text-amber-800">
