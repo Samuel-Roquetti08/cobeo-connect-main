@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AdminShell } from "@/components/admin/AdminShell";
-import { Lock, Unlock, Utensils, Loader2, AlertCircle, RefreshCw, ShieldCheck } from "lucide-react";
+import { Lock, Unlock, Utensils, Loader2, AlertCircle, RefreshCw, ShieldCheck, BookOpen } from "lucide-react";
 import { useConfiguracoes, useUpdateConfiguracoes } from "@/lib/api/adminHooks";
+import { cursos as cursosEvento } from "@/data/event";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/admin/configuracoes")({
@@ -25,6 +26,20 @@ function ConfiguracoesPage() {
         description: novo
           ? "Novos participantes não conseguem mais se inscrever nos cursos."
           : "O site voltou a aceitar novas inscrições.",
+      }),
+      onError: (e) => toast.error("Erro ao atualizar", { description: (e as Error)?.message }),
+    });
+  }
+
+  function toggleCurso(cursoId: string) {
+    if (!config) return;
+    const bloqueado = config.cursosBloqueados.includes(cursoId);
+    const novo = bloqueado
+      ? config.cursosBloqueados.filter((id) => id !== cursoId)
+      : [...config.cursosBloqueados, cursoId];
+    update.mutate({ cursosBloqueados: novo }, {
+      onSuccess: () => toast.success(bloqueado ? "Curso reaberto" : "Curso bloqueado", {
+        description: cursosEvento.find((c) => c.id === cursoId)?.titulo ?? cursoId,
       }),
       onError: (e) => toast.error("Erro ao atualizar", { description: (e as Error)?.message }),
     });
@@ -90,6 +105,51 @@ function ConfiguracoesPage() {
         onClick={toggleInscricoes}
         loading={update.isPending}
       />
+
+      {/* Bloqueio por curso individual */}
+      <div className="rounded-xl border border-[#d9d9d9] bg-white p-6">
+        <div className="flex items-start gap-4">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg" style={{ background: "#f3f0ee" }}>
+            <BookOpen className="h-5 w-5" style={{ color: "#731111" }} />
+          </div>
+          <div className="flex-1">
+            <h3 className="text-[15px] font-semibold text-[#1a1a1a]">Bloqueio por Curso</h3>
+            <p className="mt-1 text-[13px] text-[#6b6b6b]">
+              Bloqueia um curso específico (ex.: turma lotada) sem afetar os demais. Independe do bloqueio geral acima.
+            </p>
+          </div>
+        </div>
+        <ul className="mt-4 divide-y divide-[#f0eceb]">
+          {cursosEvento.map((c) => {
+            const bloqueado = config.cursosBloqueados.includes(c.id);
+            return (
+              <li key={c.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
+                <div>
+                  <p className="text-[13px] font-medium text-[#1a1a1a]">{c.titulo}</p>
+                  <p className="text-[11px] text-[#6b6b6b]">{c.dia} · {c.horario}</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span
+                    className="rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+                    style={{ background: bloqueado ? "#991b1b1a" : "#2d7a3a1a", color: bloqueado ? "#991b1b" : "#2d7a3a" }}
+                  >
+                    {bloqueado ? "Bloqueado" : "Aberto"}
+                  </span>
+                  <button
+                    onClick={() => toggleCurso(c.id)}
+                    disabled={update.isPending}
+                    className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-[12px] font-medium text-white transition-colors disabled:opacity-60 ${
+                      bloqueado ? "bg-[#2d7a3a] hover:bg-[#24632f]" : "bg-[#991b1b] hover:bg-[#7f1414]"
+                    }`}
+                  >
+                    {bloqueado ? "Reabrir" : "Bloquear"}
+                  </button>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
 
       {/* Bloqueio do jantar */}
       <ControlCard

@@ -249,7 +249,7 @@ export async function deleteCupom(id: string): Promise<void> {
 export async function getConfiguracoes(): Promise<ConfiguracoesEvento> {
   const { data, error } = await supabase
     .from("configuracoes_evento")
-    .select("inscricoes_bloqueadas, jantar_bloqueado, certificados_enviados_em")
+    .select("inscricoes_bloqueadas, jantar_bloqueado, certificados_enviados_em, cursos_bloqueados")
     .eq("id", 1)
     .single();
   if (error) throw error;
@@ -257,15 +257,17 @@ export async function getConfiguracoes(): Promise<ConfiguracoesEvento> {
     inscricoesBloqueadas: data.inscricoes_bloqueadas,
     jantarBloqueado: data.jantar_bloqueado,
     certificadosEnviadosEm: data.certificados_enviados_em ?? null,
+    cursosBloqueados: data.cursos_bloqueados ?? [],
   };
 }
 
 export async function updateConfiguracoes(
-  patch: Partial<{ inscricoesBloqueadas: boolean; jantarBloqueado: boolean }>,
+  patch: Partial<{ inscricoesBloqueadas: boolean; jantarBloqueado: boolean; cursosBloqueados: string[] }>,
 ): Promise<void> {
-  const dbPatch: Record<string, boolean> = {};
+  const dbPatch: Record<string, boolean | string[]> = {};
   if (patch.inscricoesBloqueadas !== undefined) dbPatch.inscricoes_bloqueadas = patch.inscricoesBloqueadas;
   if (patch.jantarBloqueado !== undefined) dbPatch.jantar_bloqueado = patch.jantarBloqueado;
+  if (patch.cursosBloqueados !== undefined) dbPatch.cursos_bloqueados = patch.cursosBloqueados;
   const { error } = await supabase
     .from("configuracoes_evento")
     .update(dbPatch)

@@ -56,7 +56,7 @@ export function Inscricoes() {
   const [tab, setTab] = useState<TabKey>("evento");
 
   // Estado de bloqueio, lido do banco no carregamento (fail-open em pedidos.ts)
-  const [estado, setEstado] = useState<EstadoInscricoes>({ inscricoesBloqueadas: false, jantarBloqueado: false });
+  const [estado, setEstado] = useState<EstadoInscricoes>({ inscricoesBloqueadas: false, jantarBloqueado: false, cursosBloqueados: [] });
   useEffect(() => {
     getEstadoInscricoes().then(setEstado);
   }, []);
@@ -128,6 +128,7 @@ export function Inscricoes() {
                   method={methodEvento} setMethod={setMethodEvento}
                   inscricoesBloqueadas={estado.inscricoesBloqueadas}
                   jantarBloqueado={estado.jantarBloqueado}
+                  cursosBloqueados={estado.cursosBloqueados}
                   perguntaTrabalhoRespondida={perguntaTrabalhoRespondida}
                   setPerguntaTrabalhoRespondida={setPerguntaTrabalhoRespondida}
                   onQuerSubmeterTrabalho={() => setTab("trabalho")}
@@ -345,6 +346,7 @@ interface FlowEventoProps {
   method: Method; setMethod: (v: Method) => void;
   inscricoesBloqueadas: boolean;
   jantarBloqueado: boolean;
+  cursosBloqueados: string[];
   perguntaTrabalhoRespondida: boolean;
   setPerguntaTrabalhoRespondida: (v: boolean) => void;
   onQuerSubmeterTrabalho: () => void;
@@ -359,7 +361,7 @@ function FlowEvento({
   jantarOpcao, setJantarOpcao,
   coupon, setCoupon,
   method, setMethod,
-  inscricoesBloqueadas, jantarBloqueado,
+  inscricoesBloqueadas, jantarBloqueado, cursosBloqueados,
   perguntaTrabalhoRespondida, setPerguntaTrabalhoRespondida, onQuerSubmeterTrabalho,
 }: FlowEventoProps) {
 
@@ -384,6 +386,7 @@ function FlowEvento({
 
   // Se desmarcar cursos e ficar abaixo do mínimo, remove o jantar
   function handleToggleCurso(id: CursoId) {
+    if (cursosBloqueados.includes(id)) return;
     const jatem = cursosSelecionados.includes(id);
     let nova: CursoId[];
     if (jatem) {
@@ -593,6 +596,7 @@ function FlowEvento({
                         <div className="space-y-2">
                           {cursosDia.map((curso) => {
                             const selecionado = cursosSelecionados.includes(curso.id as CursoId);
+                            const bloqueado = cursosBloqueados.includes(curso.id);
                             const primeiroDoGrupo = curso.grupoExclusivo && !gruposMostrados.has(curso.grupoExclusivo);
                             if (curso.grupoExclusivo) gruposMostrados.add(curso.grupoExclusivo);
                             return (
@@ -605,22 +609,31 @@ function FlowEvento({
                                 <button
                                   type="button"
                                   onClick={() => handleToggleCurso(curso.id as CursoId)}
+                                  disabled={bloqueado}
+                                  aria-disabled={bloqueado}
                                   className={`relative w-full rounded-lg border-2 px-4 py-3 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
-                                    selecionado
-                                      ? "border-primary bg-[#fff8f8]"
-                                      : "border-border bg-surface hover:border-primary/40"
+                                    bloqueado
+                                      ? "cursor-not-allowed border-border bg-muted/40 opacity-60"
+                                      : selecionado
+                                        ? "border-primary bg-[#fff8f8]"
+                                        : "border-border bg-surface hover:border-primary/40"
                                   }`}
                                 >
                                   <div className="flex items-start gap-3">
                                     <div className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center ${curso.grupoExclusivo ? "rounded-full" : "rounded"} border-2 transition-colors ${
-                                      selecionado ? "border-primary bg-primary" : "border-border"
+                                      selecionado && !bloqueado ? "border-primary bg-primary" : "border-border"
                                     }`}>
-                                      {selecionado && <Check className="h-3 w-3 text-white" aria-hidden="true" />}
+                                      {selecionado && !bloqueado && <Check className="h-3 w-3 text-white" aria-hidden="true" />}
                                     </div>
                                     <div className="flex-1 min-w-0">
                                       <p className="font-body text-sm font-semibold text-foreground leading-snug">
                                         {curso.titulo}
-                                        {curso.vagasLimitadas && (
+                                        {bloqueado && (
+                                          <span className="ml-2 rounded-full bg-muted px-2 py-0.5 font-body text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                                            Indisponível
+                                          </span>
+                                        )}
+                                        {!bloqueado && curso.vagasLimitadas && (
                                           <span className="ml-2 rounded-full bg-gold/20 px-2 py-0.5 font-body text-[10px] font-semibold uppercase tracking-wider text-[#8a6d1a]">
                                             30 vagas
                                           </span>

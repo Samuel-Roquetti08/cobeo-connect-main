@@ -60,7 +60,7 @@ export function useDeleteCupom() {
 export function useUpdateConfiguracoes() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (patch: Partial<{ inscricoesBloqueadas: boolean; jantarBloqueado: boolean }>) =>
+    mutationFn: (patch: Partial<{ inscricoesBloqueadas: boolean; jantarBloqueado: boolean; cursosBloqueados: string[] }>) =>
       updateConfiguracoes(patch),
     onSuccess: () => qc.invalidateQueries({ queryKey: adminKeys.config }),
   });

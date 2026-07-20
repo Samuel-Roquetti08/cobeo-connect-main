@@ -33,25 +33,30 @@ export interface PedidoCriado {
 export interface EstadoInscricoes {
   inscricoesBloqueadas: boolean;
   jantarBloqueado: boolean;
+  // curso_ref de cada curso bloqueado individualmente — some/desabilita a opção no site.
+  // A garantia real (não pode ser burlada por uma chamada direta à API) é a trigger
+  // trg_valida_curso_bloqueado em `pedido_cursos` (supabase/sql/005_bloqueio_cursos_individual.sql).
+  cursosBloqueados: string[];
 }
 
 // Fail-open: se a leitura falhar (rede, etc.), não trava a inscrição por erro
-// de infraestrutura — a validação real e definitiva está no banco (RLS).
+// de infraestrutura — a validação real e definitiva está no banco (RLS + trigger).
 export async function getEstadoInscricoes(): Promise<EstadoInscricoes> {
   try {
     const { data, error } = await supabase
       .from("configuracoes_evento")
-      .select("inscricoes_bloqueadas, jantar_bloqueado")
+      .select("inscricoes_bloqueadas, jantar_bloqueado, cursos_bloqueados")
       .eq("id", 1)
       .single();
     if (error) throw error;
     return {
       inscricoesBloqueadas: Boolean(data.inscricoes_bloqueadas),
       jantarBloqueado: Boolean(data.jantar_bloqueado),
+      cursosBloqueados: data.cursos_bloqueados ?? [],
     };
   } catch (e) {
     console.error("[pedidos] Falha ao ler estado de inscrições (fail-open).", e);
-    return { inscricoesBloqueadas: false, jantarBloqueado: false };
+    return { inscricoesBloqueadas: false, jantarBloqueado: false, cursosBloqueados: [] };
   }
 }
 
@@ -116,6 +121,21 @@ export async function criarPedidoEvento(input: CriarPedidoEventoInput): Promise<
     if (!c) throw new Error(`Curso inválido: ${id}`);
     return c;
   });
+
+  // Checagem amigável, lida na hora (não confia no estado carregado quando a
+  // página abriu — um curso pode ter sido bloqueado nesse meio-tempo). Isso é
+  // só UX: a garantia real é a trigger trg_valida_curso_bloqueado no banco,
+  // que rejeita o insert em `pedido_cursos` de qualquer forma.
+  const { data: configRow } = await supabase
+    .from("configuracoes_evento")
+    .select("cursos_bloqueados")
+    .eq("id", 1)
+    .single();
+  const cursosBloqueados: string[] = configRow?.cursos_bloqueados ?? [];
+  const cursoBloqueado = cursosInfo.find((c) => cursosBloqueados.includes(c.id));
+  if (cursoBloqueado) {
+    throw new Error(`O curso "${cursoBloqueado.titulo}" não está mais disponível para inscrição.`);
+  }
 
   const valorCursos = cursosInfo.length * categoriaInfo.valorCurso;
 

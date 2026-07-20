@@ -133,6 +133,8 @@ export interface ConfiguracoesEvento {
   inscricoesBloqueadas: boolean;
   jantarBloqueado: boolean;
   certificadosEnviadosEm: string | null;
+  // curso_ref de cada curso bloqueado individualmente (independe do bloqueio geral acima)
+  cursosBloqueados: string[];
 }
 
 // ─── Elegibilidade de certificado ─────────────────────────────────────────────
