@@ -117,7 +117,7 @@ function InscritosPage() {
         "Status": STATUS_LABELS[r.status],
         "Pagamento": r.metodoPagamento ?? "—",
         "Data": new Date(r.createdAt).toLocaleString("pt-BR"),
-        "Presença": r.presenca ? "Sim" : "Não",
+        "Presença (cursos)": `${r.cursosConfirmados.length}/${r.cursos.length}`,
       }));
       const ws = XLSX.utils.json_to_sheet(rows);
       const wb = XLSX.utils.book_new();
@@ -261,6 +261,11 @@ function InscritosPage() {
                   <td className="px-4 py-3">
                     <span className="font-medium text-[#1a1a1a]">{r.cursos.length}</span>
                     <span className="text-[11px] text-[#6b6b6b]"> curso{r.cursos.length !== 1 ? "s" : ""}</span>
+                    {r.cursos.length > 0 && (
+                      <span className="ml-1.5 text-[11px] text-[#6b6b6b]">
+                        ({r.cursosConfirmados.length} presente{r.cursosConfirmados.length !== 1 ? "s" : ""})
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-[12px]">
                     {r.jantarOpcao
@@ -444,9 +449,23 @@ function DetailDrawer({ item, onClose }: { item: Inscrito; onClose: () => void }
             <KV k="Status" v={STATUS_LABELS[item.status]} />
             <KV k="Pago em" v={item.pagoEm ? new Date(item.pagoEm).toLocaleString("pt-BR") : "—"} />
           </Section>
-          <Section title="Presença">
-            <KV k="Check-in" v={item.presenca ? "Sim" : "Não"} />
-            <KV k="Primeiro check-in" v={item.primeiroCheckinEm ? new Date(item.primeiroCheckinEm).toLocaleString("pt-BR") : "—"} />
+          <Section title={`Presença (${item.cursosConfirmados.length}/${item.cursos.length} cursos)`}>
+            {item.cursos.length === 0
+              ? <div className="text-[12px] text-[#6b6b6b]">Nenhum curso comprado.</div>
+              : <ul className="space-y-1.5 text-[13px] text-[#1a1a1a]">
+                  {item.cursos.map((c) => {
+                    const confirmado = item.cursosConfirmados.includes(c.curso_ref);
+                    return (
+                      <li key={c.id} className="flex items-center justify-between gap-3">
+                        <span>· {c.curso_titulo}</span>
+                        <span className={`shrink-0 text-[11px] font-medium ${confirmado ? "text-green-700" : "text-[#6b6b6b]"}`}>
+                          {confirmado ? "Presente" : "Sem check-in"}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>}
+            <KV k="Primeiro check-in (qualquer curso)" v={item.primeiroCheckinEm ? new Date(item.primeiroCheckinEm).toLocaleString("pt-BR") : "—"} />
           </Section>
         </div>
         <footer className="border-t border-[#f0eceb] p-4">

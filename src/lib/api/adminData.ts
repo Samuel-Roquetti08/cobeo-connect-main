@@ -66,7 +66,15 @@ export async function getInscritos(): Promise<Inscrito[]> {
     .in("pedido_id", pedidoIds);
   if (errCupons) throw errCupons;
 
-  // 5. Monta os agregados no cliente (mapas para O(1) lookup)
+  // 5. Busca as presenças por curso (não confundir com o flag agregado
+  // `inscritos.presenca`, que só indica "compareceu a pelo menos 1 curso").
+  const inscritoIds = (inscritos ?? []).map((i) => i.id);
+  const { data: presencas, error: errPresencas } = inscritoIds.length
+    ? await supabase.from("presencas").select("inscrito_id, curso_ref").in("inscrito_id", inscritoIds)
+    : { data: [] as { inscrito_id: string; curso_ref: string }[], error: null };
+  if (errPresencas) throw errPresencas;
+
+  // 6. Monta os agregados no cliente (mapas para O(1) lookup)
   const inscritoPorPedido = new Map(
     (inscritos ?? []).map((i) => [i.pedido_id, i]),
   );
@@ -79,6 +87,12 @@ export async function getInscritos(): Promise<Inscrito[]> {
   const cupomPorPedido = new Map(
     (cupons ?? []).map((c) => [c.pedido_id, c.codigo]),
   );
+  const cursosConfirmadosPorInscrito = new Map<string, string[]>();
+  for (const p of presencas ?? []) {
+    const arr = cursosConfirmadosPorInscrito.get(p.inscrito_id) ?? [];
+    arr.push(p.curso_ref);
+    cursosConfirmadosPorInscrito.set(p.inscrito_id, arr);
+  }
 
   return pedidos.map((p) => {
     const ins = inscritoPorPedido.get(p.id);
@@ -106,6 +120,7 @@ export async function getInscritos(): Promise<Inscrito[]> {
       createdAt: p.created_at,
       presenca: ins?.presenca ?? false,
       primeiroCheckinEm: ins?.primeiro_checkin_em ?? null,
+      cursosConfirmados: ins?.id ? (cursosConfirmadosPorInscrito.get(ins.id) ?? []) : [],
     };
   });
 }

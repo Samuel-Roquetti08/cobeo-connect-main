@@ -73,9 +73,12 @@ export interface Inscrito {
   metodoPagamento: string | null;
   pagoEm: string | null;
   createdAt: string;
-  // Presença
+  // Presença — `presenca`/`primeiroCheckinEm` são o resumo agregado do banco
+  // ("compareceu a pelo menos 1 curso"); `cursosConfirmados` é o dado real por
+  // curso (curso_ref de cada check-in confirmado) e deve ser o que a UI exibe.
   presenca: boolean;
   primeiroCheckinEm: string | null;
+  cursosConfirmados: string[];
 }
 
 // ─── Trabalho ────────────────────────────────────────────────────────────────
