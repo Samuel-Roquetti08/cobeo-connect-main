@@ -51,7 +51,10 @@ function InscritosPage() {
 
 
   const [q, setQ] = useState("");
-  const [statusFilter, setStatusFilter] = useState<StatusPagamento | "Todos">(search.status ?? "Todos");
+  // Padrão é "pago", não "Todos" — pendentes (incluindo órfãos de checkout
+  // abandonado) não ficam misturados com confirmados por padrão (Estratégia
+  // C, item 1 da auditoria pré-lançamento). Continuam acessíveis pelo filtro.
+  const [statusFilter, setStatusFilter] = useState<StatusPagamento | "Todos">(search.status ?? "pago");
   const [cupomFilter, setCupomFilter] = useState<"todos" | "com" | "sem">(search.cupom ?? "todos");
   const [jantarFilter, setJantarFilter] = useState<"todos" | "com" | "sem">(search.jantar ?? "todos");
   const [from, setFrom] = useState("");
@@ -62,6 +65,7 @@ function InscritosPage() {
   const [analysisOpen, setAnalysisOpen] = useState(true);
 
   const all = inscritos ?? [];
+  const pendentesCount = all.filter((r) => r.status === "pendente").length;
 
   const filtered = useMemo(() => {
     return all.filter((r) => {
@@ -220,6 +224,18 @@ function InscritosPage() {
           </button>
         </div>
       </div>
+
+      {/* Pendentes ficam fora da lista principal por padrão (Estratégia C) —
+          este aviso evita que sumam sem ninguém saber que existem. */}
+      {statusFilter !== "pendente" && pendentesCount > 0 && (
+        <button
+          onClick={() => { setStatusFilter("pendente"); setPage(1); }}
+          className="flex w-full items-center justify-between rounded-lg border border-[#e8d7a0] bg-[#fdf8ec] px-4 py-2.5 text-left text-[13px] text-[#8a6d1a] transition-colors hover:bg-[#faf0d4]"
+        >
+          <span>{pendentesCount} pedido{pendentesCount > 1 ? "s" : ""} pendente{pendentesCount > 1 ? "s" : ""} (não pago) fora desta lista.</span>
+          <span className="font-semibold underline">Ver pendentes →</span>
+        </button>
+      )}
 
       {/* Table */}
       <div className="overflow-hidden rounded-xl border border-[#d9d9d9] bg-white">

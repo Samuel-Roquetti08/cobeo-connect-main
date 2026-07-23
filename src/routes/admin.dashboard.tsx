@@ -11,6 +11,7 @@ import {
   PieChart, Pie, Cell, Legend,
 } from "recharts";
 import { useInscritos, useTrabalhos } from "@/lib/api/adminHooks";
+import { separarPendentes } from "@/lib/api/adminData";
 import { CATEGORIA_LABELS, STATUS_LABELS, type Inscrito, type StatusPagamento } from "@/lib/api/adminTypes";
 
 export const Route = createFileRoute("/admin/dashboard")({
@@ -39,7 +40,13 @@ function Dashboard() {
   const isLoading = inscritosQ.isLoading || trabalhosQ.isLoading;
   const isError = inscritosQ.isError || trabalhosQ.isError;
 
-  const inscritos = useMemo(() => inscritosQ.data ?? [], [inscritosQ.data]);
+  // Estratégia C (auditoria pré-lançamento, item 1): pendentes (incluindo
+  // órfãos de checkout abandonado) não entram nas contagens/gráficos
+  // principais — só pago e outros status resolvidos (cancelado, etc.).
+  const { confirmados: inscritos, pendentes: inscritosPendentes } = useMemo(
+    () => separarPendentes(inscritosQ.data ?? []),
+    [inscritosQ.data],
+  );
   const trabalhos = useMemo(() => trabalhosQ.data ?? [], [trabalhosQ.data]);
 
   // Estado de ordenação da tabela de inscrições (tipo explorer)
@@ -57,9 +64,11 @@ function Dashboard() {
   }
 
   // ── KPIs derivados ──────────────────────────────────────────────────────────
+  // "Total de Inscritos" conta status resolvidos (pago + cancelado/reembolsado/
+  // expirado) — pendente nunca infla essa contagem (item 3 da auditoria).
   const totalInscritos = inscritos.length;
   const confirmados = inscritos.filter((i) => i.status === "pago").length;
-  const pendentes = inscritos.filter((i) => i.status === "pendente").length;
+  const pendentes = inscritosPendentes.length;
   const totalTrabalhos = trabalhos.length;
   const comJantar = inscritos.filter((i) => i.jantarOpcao && i.status === "pago").length;
 

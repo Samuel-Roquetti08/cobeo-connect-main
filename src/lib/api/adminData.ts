@@ -125,6 +125,23 @@ export async function getInscritos(): Promise<Inscrito[]> {
   });
 }
 
+// Estratégia C (auditoria pré-lançamento, item 1): criarPedidoEvento() não
+// checa pedido existente, então quem desiste no checkout e volta depois pra
+// pagar gera 2 linhas (1 pendente órfã + 1 paga) — um pendente e um pago do
+// mesmo e-mail podem até ter itens diferentes (a pessoa mudou de ideia entre
+// tentativas), então não dá pra assumir que "são o mesmo pedido" e casar por
+// e-mail. A regra é mais simples e só de apresentação (nada tocado no
+// banco): a visão de confirmados mostra só `pago`; todo `pendente` (de
+// qualquer idade) vive separado, nunca misturado com confirmados.
+export function separarPendentes(todos: Inscrito[]): { confirmados: Inscrito[]; pendentes: Inscrito[] } {
+  const confirmados: Inscrito[] = [];
+  const pendentes: Inscrito[] = [];
+  for (const i of todos) {
+    (i.status === "pendente" ? pendentes : confirmados).push(i);
+  }
+  return { confirmados, pendentes };
+}
+
 // ─── TRABALHOS ───────────────────────────────────────────────────────────────
 export async function getTrabalhos(): Promise<Trabalho[]> {
   const { data: trabalhos, error } = await supabase
