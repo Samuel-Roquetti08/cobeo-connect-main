@@ -5,6 +5,7 @@ import { Search, Printer, QrCode as QrIcon, Loader2, AlertCircle, RefreshCw } fr
 import { useInscritosCracha } from "@/lib/api/adminHooks";
 import { type CrachaInscrito } from "@/lib/api/adminData";
 import { CATEGORIA_LABELS } from "@/lib/api/adminTypes";
+import { normalizarBusca } from "@/lib/utils";
 import QRCode from "qrcode";
 
 export const Route = createFileRoute("/admin/crachas")({
@@ -87,7 +88,7 @@ function CrachasPage() {
   const [selected, setSelected] = useState<string | null>(null);
 
   const all = inscritos ?? [];
-  const filtered = all.filter((i) => !q || i.nome.toLowerCase().includes(q.toLowerCase()) || i.email.toLowerCase().includes(q.toLowerCase()));
+  const filtered = all.filter((i) => !q || normalizarBusca(i.nome).includes(normalizarBusca(q)) || normalizarBusca(i.email).includes(normalizarBusca(q)));
   const inscritoSelecionado = all.find((i) => i.inscritoId === selected) ?? null;
 
   // Imprime todos os crachás filtrados — gera QR Codes e abre janela de impressão

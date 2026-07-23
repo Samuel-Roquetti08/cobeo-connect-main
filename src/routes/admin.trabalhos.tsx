@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { Search, Download, Eye, X, Paperclip, Loader2, AlertCircle, RefreshCw } from "lucide-react";
 import { useTrabalhos } from "@/lib/api/adminHooks";
 import { getTrabalhoDownloadUrl } from "@/lib/api/adminData";
+import { normalizarBusca } from "@/lib/utils";
 import { type Trabalho, type StatusPagamento, STATUS_LABELS } from "@/lib/api/adminTypes";
 import { FORMATO_TRABALHO_LABELS } from "@/data/event";
 import { toast } from "sonner";
@@ -54,8 +55,8 @@ function TrabalhosPage() {
   const filtered = useMemo(() => {
     return all.filter((t) => {
       if (q) {
-        const s = q.toLowerCase();
-        if (!t.titulo.toLowerCase().includes(s) && !t.responsavel.toLowerCase().includes(s)) return false;
+        const s = normalizarBusca(q);
+        if (!normalizarBusca(t.titulo).includes(s) && !normalizarBusca(t.responsavel).includes(s)) return false;
       }
       if (statusFilter !== "Todos" && t.status !== statusFilter) return false;
       if (arquivoFilter === "com" && !t.arquivoPath) return false;

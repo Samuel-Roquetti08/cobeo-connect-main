@@ -7,6 +7,7 @@ import {
   AlertCircle, RefreshCw,
 } from "lucide-react";
 import { useInscritos } from "@/lib/api/adminHooks";
+import { normalizarBusca } from "@/lib/utils";
 import {
   type Inscrito, type StatusPagamento,
   STATUS_LABELS, CATEGORIA_LABELS, JANTAR_LABELS,
@@ -70,8 +71,8 @@ function InscritosPage() {
   const filtered = useMemo(() => {
     return all.filter((r) => {
       if (q) {
-        const s = q.toLowerCase();
-        if (!r.nome.toLowerCase().includes(s) && !r.email.toLowerCase().includes(s)) return false;
+        const s = normalizarBusca(q);
+        if (!normalizarBusca(r.nome).includes(s) && !normalizarBusca(r.email).includes(s)) return false;
       }
       if (statusFilter !== "Todos" && r.status !== statusFilter) return false;
       if (cupomFilter === "com" && !r.cupomCodigo) return false;
