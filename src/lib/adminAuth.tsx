@@ -13,6 +13,9 @@ interface AdminAuthCtx {
   logout: () => Promise<void>;
   ready: boolean;
   error: string | null;
+  // Item 3 da auditoria pré-lançamento: recuperação de senha via Supabase Auth nativo.
+  requestPasswordReset: (email: string) => Promise<{ ok: boolean; error?: string }>;
+  updatePassword: (novaSenha: string) => Promise<{ ok: boolean; error?: string }>;
 }
 
 const Ctx = createContext<AdminAuthCtx | null>(null);
@@ -74,8 +77,21 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }
 
+  async function requestPasswordReset(email: string): Promise<{ ok: boolean; error?: string }> {
+    const redirectTo = typeof window !== "undefined" ? `${window.location.origin}/admin/redefinir-senha` : undefined;
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), { redirectTo });
+    if (error) return { ok: false, error: error.message };
+    return { ok: true };
+  }
+
+  async function updatePassword(novaSenha: string): Promise<{ ok: boolean; error?: string }> {
+    const { error } = await supabase.auth.updateUser({ password: novaSenha });
+    if (error) return { ok: false, error: error.message };
+    return { ok: true };
+  }
+
   return (
-    <Ctx.Provider value={{ user, login, logout, ready, error }}>
+    <Ctx.Provider value={{ user, login, logout, ready, error, requestPasswordReset, updatePassword }}>
       {children}
     </Ctx.Provider>
   );

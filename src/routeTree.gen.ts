@@ -15,6 +15,7 @@ import { Route as InscricaoSucessoRouteImport } from './routes/inscricao.sucesso
 import { Route as InscricaoPendenteRouteImport } from './routes/inscricao.pendente'
 import { Route as InscricaoFalhaRouteImport } from './routes/inscricao.falha'
 import { Route as AdminTrabalhosRouteImport } from './routes/admin.trabalhos'
+import { Route as AdminRedefinirSenhaRouteImport } from './routes/admin.redefinir-senha'
 import { Route as AdminLoginRouteImport } from './routes/admin.login'
 import { Route as AdminInscritosRouteImport } from './routes/admin.inscritos'
 import { Route as AdminExportarRouteImport } from './routes/admin.exportar'
@@ -54,6 +55,11 @@ const InscricaoFalhaRoute = InscricaoFalhaRouteImport.update({
 const AdminTrabalhosRoute = AdminTrabalhosRouteImport.update({
   id: '/admin/trabalhos',
   path: '/admin/trabalhos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRedefinirSenhaRoute = AdminRedefinirSenhaRouteImport.update({
+  id: '/admin/redefinir-senha',
+  path: '/admin/redefinir-senha',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminLoginRoute = AdminLoginRouteImport.update({
@@ -119,6 +125,7 @@ export interface FileRoutesByFullPath {
   '/admin/exportar': typeof AdminExportarRoute
   '/admin/inscritos': typeof AdminInscritosRoute
   '/admin/login': typeof AdminLoginRoute
+  '/admin/redefinir-senha': typeof AdminRedefinirSenhaRoute
   '/admin/trabalhos': typeof AdminTrabalhosRoute
   '/inscricao/falha': typeof InscricaoFalhaRoute
   '/inscricao/pendente': typeof InscricaoPendenteRoute
@@ -137,6 +144,7 @@ export interface FileRoutesByTo {
   '/admin/exportar': typeof AdminExportarRoute
   '/admin/inscritos': typeof AdminInscritosRoute
   '/admin/login': typeof AdminLoginRoute
+  '/admin/redefinir-senha': typeof AdminRedefinirSenhaRoute
   '/admin/trabalhos': typeof AdminTrabalhosRoute
   '/inscricao/falha': typeof InscricaoFalhaRoute
   '/inscricao/pendente': typeof InscricaoPendenteRoute
@@ -156,6 +164,7 @@ export interface FileRoutesById {
   '/admin/exportar': typeof AdminExportarRoute
   '/admin/inscritos': typeof AdminInscritosRoute
   '/admin/login': typeof AdminLoginRoute
+  '/admin/redefinir-senha': typeof AdminRedefinirSenhaRoute
   '/admin/trabalhos': typeof AdminTrabalhosRoute
   '/inscricao/falha': typeof InscricaoFalhaRoute
   '/inscricao/pendente': typeof InscricaoPendenteRoute
@@ -176,6 +185,7 @@ export interface FileRouteTypes {
     | '/admin/exportar'
     | '/admin/inscritos'
     | '/admin/login'
+    | '/admin/redefinir-senha'
     | '/admin/trabalhos'
     | '/inscricao/falha'
     | '/inscricao/pendente'
@@ -194,6 +204,7 @@ export interface FileRouteTypes {
     | '/admin/exportar'
     | '/admin/inscritos'
     | '/admin/login'
+    | '/admin/redefinir-senha'
     | '/admin/trabalhos'
     | '/inscricao/falha'
     | '/inscricao/pendente'
@@ -212,6 +223,7 @@ export interface FileRouteTypes {
     | '/admin/exportar'
     | '/admin/inscritos'
     | '/admin/login'
+    | '/admin/redefinir-senha'
     | '/admin/trabalhos'
     | '/inscricao/falha'
     | '/inscricao/pendente'
@@ -231,6 +243,7 @@ export interface RootRouteChildren {
   AdminExportarRoute: typeof AdminExportarRoute
   AdminInscritosRoute: typeof AdminInscritosRoute
   AdminLoginRoute: typeof AdminLoginRoute
+  AdminRedefinirSenhaRoute: typeof AdminRedefinirSenhaRoute
   AdminTrabalhosRoute: typeof AdminTrabalhosRoute
   InscricaoFalhaRoute: typeof InscricaoFalhaRoute
   InscricaoPendenteRoute: typeof InscricaoPendenteRoute
@@ -280,6 +293,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/trabalhos'
       fullPath: '/admin/trabalhos'
       preLoaderRoute: typeof AdminTrabalhosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/redefinir-senha': {
+      id: '/admin/redefinir-senha'
+      path: '/admin/redefinir-senha'
+      fullPath: '/admin/redefinir-senha'
+      preLoaderRoute: typeof AdminRedefinirSenhaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/login': {
@@ -367,6 +387,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminExportarRoute: AdminExportarRoute,
   AdminInscritosRoute: AdminInscritosRoute,
   AdminLoginRoute: AdminLoginRoute,
+  AdminRedefinirSenhaRoute: AdminRedefinirSenhaRoute,
   AdminTrabalhosRoute: AdminTrabalhosRoute,
   InscricaoFalhaRoute: InscricaoFalhaRoute,
   InscricaoPendenteRoute: InscricaoPendenteRoute,
