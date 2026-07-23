@@ -26,6 +26,27 @@ import type {
   ElegivelJantar,
 } from "./adminTypes";
 
+// ─── LOGS DE AUDITORIA (item 2 da auditoria pré-lançamento) ──────────────────
+// Chamado nos pontos sensíveis (deletar/criar cupom, bloquear/desbloquear
+// inscrições/jantar/curso, emitir certificados). Pega o e-mail do admin da
+// sessão atual. Falha ao gravar o log nunca derruba a ação em si — só loga.
+async function registrarLog(
+  acao: string,
+  entidade: string,
+  entidadeId: string | null,
+  detalhes?: Record<string, unknown>,
+): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser();
+  const { error } = await supabase.from("admin_logs").insert({
+    admin_email: user?.email ?? "desconhecido",
+    acao,
+    entidade,
+    entidade_id: entidadeId,
+    detalhes: detalhes ?? null,
+  });
+  if (error) console.error("[admin_logs] falha ao registrar log", error);
+}
+
 // ─── INSCRITOS ───────────────────────────────────────────────────────────────
 export async function getInscritos(): Promise<Inscrito[]> {
   // 1. Busca todos os pedidos que têm inscrição (cursos/jantar)
@@ -243,6 +264,7 @@ export async function createCupom(input: {
     .select()
     .single();
   if (error) throw error;
+  await registrarLog("criar_cupom", "cupom", data.id, { codigo: data.codigo, tipo: data.tipo, valor: Number(data.valor) });
   return {
     id: data.id,
     codigo: data.codigo,
@@ -258,8 +280,11 @@ export async function createCupom(input: {
 }
 
 export async function deleteCupom(id: string): Promise<void> {
+  // Busca o código antes de apagar — depois do delete não dá mais pra saber qual era.
+  const { data: existente } = await supabase.from("cupons").select("codigo").eq("id", id).maybeSingle();
   const { error } = await supabase.from("cupons").delete().eq("id", id);
   if (error) throw error;
+  await registrarLog("deletar_cupom", "cupom", id, { codigo: existente?.codigo ?? null });
 }
 
 // ─── CONFIGURAÇÕES DO EVENTO ─────────────────────────────────────────────────
@@ -290,6 +315,7 @@ export async function updateConfiguracoes(
     .update(dbPatch)
     .eq("id", 1);
   if (error) throw error;
+  await registrarLog("atualizar_configuracoes", "config", null, dbPatch);
 }
 
 // ─── CERTIFICADOS ────────────────────────────────────────────────────────────
@@ -316,11 +342,13 @@ export async function getElegiveisCertificado(): Promise<ElegivelCertificado[]> 
 // Ação em massa e irreversível: grava o timestamp de envio (usado pela UI para
 // desabilitar o botão e evitar reenvio/duplicação de e-mails).
 export async function marcarCertificadosEnviados(): Promise<void> {
+  const enviadosEm = new Date().toISOString();
   const { error } = await supabase
     .from("configuracoes_evento")
-    .update({ certificados_enviados_em: new Date().toISOString() })
+    .update({ certificados_enviados_em: enviadosEm })
     .eq("id", 1);
   if (error) throw error;
+  await registrarLog("emitir_certificados", "certificados", null, { certificados_enviados_em: enviadosEm });
 }
 
 // ─── CHECK-IN ────────────────────────────────────────────────────────────────
