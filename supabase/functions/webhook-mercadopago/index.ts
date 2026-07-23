@@ -13,6 +13,9 @@ import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const MP_ACCESS_TOKEN = Deno.env.get("MP_ACCESS_TOKEN")!;
+// Override só para teste local (PLANO_COBEO_teste_webhook_isolado) — sem a
+// variável definida, produção usa exatamente a mesma URL de sempre.
+const MP_API_BASE_URL = Deno.env.get("MP_API_BASE_URL") ?? "https://api.mercadopago.com";
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const RESEND_FROM = Deno.env.get("RESEND_FROM") ?? "COBEO <onboarding@resend.dev>";
 
@@ -172,7 +175,7 @@ Deno.serve(async (req: Request) => {
   // Nunca confia no payload: consulta a API do MP com o access token.
   let payment: Record<string, unknown>;
   try {
-    const mpRes = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
+    const mpRes = await fetch(`${MP_API_BASE_URL}/v1/payments/${paymentId}`, {
       headers: { Authorization: `Bearer ${MP_ACCESS_TOKEN}` },
     });
     if (!mpRes.ok) {
