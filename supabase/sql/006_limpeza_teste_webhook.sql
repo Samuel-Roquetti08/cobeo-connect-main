@@ -7,6 +7,8 @@
 -- disparos do teste (referência começando com "TESTE-").
 -- ============================================================================
 
-delete from pedidos where email like 'teste+%@exemplo.com';
+-- cupom primeiro: cupons.pedido_id referencia pedidos(id) sem cascade,
+-- então apagar o pedido antes derruba com foreign key violation.
 delete from cupons where codigo = 'TESTEWEBHOOK7';
+delete from pedidos where email like 'teste+%@exemplo.com';
 delete from webhook_logs where reference_id like 'TESTE-%';
