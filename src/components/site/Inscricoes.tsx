@@ -12,7 +12,7 @@ import {
   type CategoriaId, type CursoId, type JantarOpcaoId,
 } from "@/data/event";
 import {
-  criarPedidoEvento, criarPedidoTrabalho, getEstadoInscricoes,
+  criarPedidoEvento, criarPedidoTrabalho, getEstadoInscricoes, validarArquivoTrabalho,
   type CupomAplicado, type EstadoInscricoes,
 } from "@/lib/api/pedidos";
 import { traduzirErro } from "@/lib/errorMessages";
@@ -90,7 +90,7 @@ export function Inscricoes() {
     modalidade: "",
     formato: "",
   });
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [methodTrabalho, setMethodTrabalho] = useState<Method>("pix");
 
   return (
@@ -146,7 +146,7 @@ export function Inscricoes() {
                   step={stepTrabalho} setStep={setStepTrabalho}
                   coauthors={coauthors} setCoauthors={setCoauthors}
                   work={work} setWork={setWork}
-                  file={file} setFile={setFile}
+                  files={files} setFiles={setFiles}
                   method={methodTrabalho} setMethod={setMethodTrabalho}
                 />
               </motion.div>
@@ -816,7 +816,7 @@ interface FlowTrabalhoProps {
   coauthors: string[]; setCoauthors: (v: string[]) => void;
   work: { titulo: string; resumo: string; categoria: string; modalidade: string; formato: string };
   setWork: (v: { titulo: string; resumo: string; categoria: string; modalidade: string; formato: string }) => void;
-  file: File | null; setFile: (v: File | null) => void;
+  files: File[]; setFiles: (v: File[]) => void;
   method: Method; setMethod: (v: Method) => void;
 }
 
@@ -826,7 +826,7 @@ function FlowTrabalho({
   step, setStep,
   coauthors, setCoauthors,
   work, setWork,
-  file, setFile,
+  files, setFiles,
   method, setMethod,
 }: FlowTrabalhoProps) {
 
@@ -843,7 +843,7 @@ function FlowTrabalho({
     setSubmitError(null);
     setSubmitting(true);
     try {
-      if (!file) throw new Error("Selecione o arquivo do trabalho.");
+      if (files.length === 0) throw new Error("Selecione ao menos um arquivo do trabalho.");
 
       const { pedidoId } = await criarPedidoTrabalho({
         nome: dados.nome,
@@ -856,7 +856,7 @@ function FlowTrabalho({
         modalidade: work.modalidade as "Presencial" | "Online",
         formato: work.formato as "Oral" | "Pôster",
         coautores: coauthors,
-        arquivo: file,
+        arquivos: files,
         metodoPagamento: method,
         consentimentoLgpd,
       });
@@ -1019,7 +1019,7 @@ function FlowTrabalho({
               </Field>
             </div>
 
-            <FileUpload file={file} onChange={setFile} />
+            <FileUpload files={files} onChange={setFiles} />
 
             <div className="space-y-2">
               <Accordion title="Datas Importantes">
@@ -1060,7 +1060,7 @@ function FlowTrabalho({
             </div>
 
             <PrimaryButton
-              disabled={!work.titulo || !work.categoria || !work.modalidade || !work.formato || !file}
+              disabled={!work.titulo || !work.categoria || !work.modalidade || !work.formato || files.length === 0}
               onClick={() => setStep(2)}
             >
               Continuar para Pagamento
@@ -1294,22 +1294,45 @@ function PayCard({ active, onClick, icon, title, sub }: {
   );
 }
 
-/* ── FileUpload ────────────────────────────────────────────────────────────── */
-function FileUpload({ file, onChange }: { file: File | null; onChange: (f: File | null) => void }) {
+/* ── FileUpload (T5: múltiplos arquivos, acumula em vez de substituir) ──────── */
+function FileUpload({ files, onChange }: { files: File[]; onChange: (f: File[]) => void }) {
   const [over, setOver] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+
+  // Cada arquivo novo é validado individualmente (tamanho/extensão) antes de
+  // entrar na lista — os que já foram aceitos não são reavaliados.
+  function adicionarArquivos(novos: FileList | null) {
+    if (!novos || novos.length === 0) return;
+    const validos: File[] = [];
+    let primeiroErro: string | null = null;
+    for (const f of Array.from(novos)) {
+      const erroArquivo = validarArquivoTrabalho(f);
+      if (erroArquivo && !primeiroErro) {
+        primeiroErro = `${f.name}: ${erroArquivo}`;
+      } else if (!erroArquivo) {
+        validos.push(f);
+      }
+    }
+    setErro(primeiroErro);
+    if (validos.length > 0) onChange([...files, ...validos]);
+  }
+
   function onDrop(e: DragEvent<HTMLLabelElement>) {
     e.preventDefault(); setOver(false);
-    const f = e.dataTransfer.files?.[0];
-    if (f) onChange(f);
+    adicionarArquivos(e.dataTransfer.files);
   }
   function onPick(e: ChangeEvent<HTMLInputElement>) {
-    const f = e.target.files?.[0];
-    if (f) onChange(f);
+    adicionarArquivos(e.target.files);
+    e.target.value = ""; // permite selecionar o mesmo arquivo de novo depois de remover
   }
+  function removerArquivo(index: number) {
+    onChange(files.filter((_, i) => i !== index));
+  }
+
   return (
     <div>
       <p className="mb-1 font-body text-xs font-semibold text-foreground">
-        Arquivo do Trabalho<span className="ml-0.5 text-destructive" aria-hidden="true">*</span>
+        Arquivo(s) do Trabalho<span className="ml-0.5 text-destructive" aria-hidden="true">*</span>
       </p>
       <label
         onDragOver={(e) => { e.preventDefault(); setOver(true); }}
@@ -1318,20 +1341,29 @@ function FileUpload({ file, onChange }: { file: File | null; onChange: (f: File 
         className={`flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed px-6 py-10 text-center transition-colors ${over ? "border-primary bg-[#fff8f8]" : "border-border bg-background hover:border-primary/50"}`}
       >
         <Upload className="h-10 w-10 text-secondary" aria-hidden="true" />
-        <p className="font-body text-base font-medium text-foreground">Arraste seu arquivo aqui</p>
+        <p className="font-body text-base font-medium text-foreground">Arraste seus arquivos aqui</p>
         <p className="font-body text-sm text-primary underline">ou clique para selecionar</p>
-        <p className="font-body text-xs text-muted-foreground">PDF, DOC, DOCX, PPT ou PPTX — até 10 MB</p>
-        <input type="file" className="sr-only" onChange={onPick} accept=".pdf,.doc,.docx,.ppt,.pptx" aria-label="Selecionar arquivo do trabalho acadêmico" />
+        <p className="font-body text-xs text-muted-foreground">PDF, DOC, DOCX, PPT ou PPTX — até 10 MB cada, pode selecionar vários</p>
+        <input type="file" multiple className="sr-only" onChange={onPick} accept=".pdf,.doc,.docx,.ppt,.pptx" aria-label="Selecionar arquivo(s) do trabalho acadêmico" />
       </label>
-      {file && (
-        <div className="mt-3 inline-flex items-center gap-3 rounded-md border border-border bg-background px-3 py-2">
-          <FileText className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
-          <span className="font-body text-sm text-foreground">{file.name}</span>
-          <span className="font-body text-xs text-muted-foreground">{(file.size / 1024).toFixed(0)} KB</span>
-          <button type="button" onClick={() => onChange(null)} aria-label={`Remover arquivo ${file.name}`} className="text-muted-foreground hover:text-destructive focus-visible:outline-none">
-            <X className="h-4 w-4" />
-          </button>
-        </div>
+
+      {erro && (
+        <p role="alert" className="mt-2 font-body text-xs font-semibold text-destructive">{erro}</p>
+      )}
+
+      {files.length > 0 && (
+        <ul className="mt-3 space-y-2">
+          {files.map((f, i) => (
+            <li key={`${f.name}-${f.size}-${i}`} className="inline-flex w-full items-center gap-3 rounded-md border border-border bg-background px-3 py-2">
+              <FileText className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+              <span className="flex-1 truncate font-body text-sm text-foreground">{f.name}</span>
+              <span className="shrink-0 font-body text-xs text-muted-foreground">{(f.size / 1024).toFixed(0)} KB</span>
+              <button type="button" onClick={() => removerArquivo(i)} aria-label={`Remover arquivo ${f.name}`} className="shrink-0 text-muted-foreground hover:text-destructive focus-visible:outline-none">
+                <X className="h-4 w-4" />
+              </button>
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );

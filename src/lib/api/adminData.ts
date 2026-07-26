@@ -15,6 +15,7 @@ import { supabase } from "../supabaseClient";
 import type {
   Inscrito,
   Trabalho,
+  TrabalhoArquivo,
   Cupom,
   ConfiguracoesEvento,
   PedidoCurso,
@@ -190,9 +191,32 @@ export async function getTrabalhos(): Promise<Trabalho[]> {
     coautoresPorTrabalho.set(c.trabalho_id, arr);
   }
 
+  // T5 — N arquivos por trabalho (supabase/sql/010_trabalho_arquivos.sql).
+  // Tabela pode não existir ainda (Samuel não rodou a migration) — nesse
+  // caso cai só no fallback das colunas antigas abaixo, fail-open.
+  const arquivosPorTrabalho = new Map<string, TrabalhoArquivo[]>();
+  const { data: arquivos, error: errArq } = await supabase
+    .from("trabalho_arquivos")
+    .select("trabalho_id, arquivo_path, arquivo_nome")
+    .in("trabalho_id", ids);
+  if (errArq) {
+    console.error("[adminData] falha ao ler trabalho_arquivos (migration 010 rodou?)", errArq);
+  } else {
+    for (const a of arquivos ?? []) {
+      const arr = arquivosPorTrabalho.get(a.trabalho_id) ?? [];
+      arr.push({ path: a.arquivo_path, nome: a.arquivo_nome });
+      arquivosPorTrabalho.set(a.trabalho_id, arr);
+    }
+  }
+
   return trabalhos.map((t) => {
     // o join vem como objeto (inner). normaliza para um único registro
     const pedido = Array.isArray(t.pedidos) ? t.pedidos[0] : t.pedidos;
+    // Trabalhos submetidos antes da migration 010 têm o arquivo só nas
+    // colunas antigas de `trabalhos` — usadas aqui como fallback.
+    const arquivosLegado: TrabalhoArquivo[] = t.arquivo_path
+      ? [{ path: t.arquivo_path, nome: t.arquivo_nome ?? "arquivo" }]
+      : [];
     return {
       id: t.id,
       pedidoId: t.pedido_id,
@@ -204,8 +228,7 @@ export async function getTrabalhos(): Promise<Trabalho[]> {
       modalidade: t.modalidade,
       formato: t.formato,
       coautores: coautoresPorTrabalho.get(t.id) ?? [],
-      arquivoPath: t.arquivo_path ?? null,
-      arquivoNome: t.arquivo_nome ?? null,
+      arquivos: arquivosPorTrabalho.get(t.id) ?? arquivosLegado,
       status: (pedido?.status as StatusPagamento) ?? "pendente",
       createdAt: (t as { created_at?: string }).created_at ?? new Date().toISOString(),
     };

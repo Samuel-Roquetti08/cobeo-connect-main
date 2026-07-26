@@ -226,7 +226,7 @@ export interface CriarPedidoTrabalhoInput extends DadosComprador {
   modalidade: "Presencial" | "Online";
   formato: "Oral" | "Pôster";
   coautores: string[];
-  arquivo: File;
+  arquivos: File[];
   metodoPagamento: MetodoPagamento;
   consentimentoLgpd: boolean;
 }
@@ -235,20 +235,31 @@ export async function criarPedidoTrabalho(input: CriarPedidoTrabalhoInput): Prom
   if (!input.consentimentoLgpd) {
     throw new Error("É necessário aceitar a política de privacidade para continuar.");
   }
-  const erroArquivo = validarArquivoTrabalho(input.arquivo);
-  if (erroArquivo) throw new Error(erroArquivo);
+  if (input.arquivos.length === 0) {
+    throw new Error("Selecione ao menos um arquivo do trabalho.");
+  }
+  for (const arquivo of input.arquivos) {
+    const erroArquivo = validarArquivoTrabalho(arquivo);
+    if (erroArquivo) throw new Error(`${arquivo.name}: ${erroArquivo}`);
+  }
 
   const pedidoId = crypto.randomUUID();
   const mpReferenceId = `COBEO-TRB-${pedidoId.slice(0, 8).toUpperCase()}`;
 
-  // Upload primeiro: se falhar, nenhum pedido é criado (nenhum lixo no banco).
-  // Nome nunca é o original — evita colisão e path traversal.
-  const ext = input.arquivo.name.slice(input.arquivo.name.lastIndexOf(".")).toLowerCase();
-  const arquivoPath = `${pedidoId}/${crypto.randomUUID()}${ext}`;
-  const { error: uploadError } = await supabase.storage
-    .from("trabalhos-pdfs")
-    .upload(arquivoPath, input.arquivo, { contentType: input.arquivo.type, upsert: false });
-  if (uploadError) throw uploadError;
+  // Upload primeiro: se algum falhar, nenhum pedido é criado (nenhum lixo no
+  // banco — os arquivos já enviados ficam órfãos no Storage, mesmo trade-off
+  // que já existia para 1 arquivo só). Nome nunca é o original — evita
+  // colisão e path traversal.
+  const arquivosParaGravar: { path: string; nome: string; tipo: string }[] = [];
+  for (const arquivo of input.arquivos) {
+    const ext = arquivo.name.slice(arquivo.name.lastIndexOf(".")).toLowerCase();
+    const arquivoPath = `${pedidoId}/${crypto.randomUUID()}${ext}`;
+    const { error: uploadError } = await supabase.storage
+      .from("trabalhos-pdfs")
+      .upload(arquivoPath, arquivo, { contentType: arquivo.type, upsert: false });
+    if (uploadError) throw uploadError;
+    arquivosParaGravar.push({ path: arquivoPath, nome: arquivo.name, tipo: arquivo.type });
+  }
 
   const { error: pedidoError } = await supabase.from("pedidos").insert({
     id: pedidoId,
@@ -278,11 +289,20 @@ export async function criarPedidoTrabalho(input: CriarPedidoTrabalhoInput): Prom
     categoria: input.categoria,
     modalidade: input.modalidade,
     formato: input.formato,
-    arquivo_path: arquivoPath,
-    arquivo_nome: input.arquivo.name,
-    arquivo_tipo: input.arquivo.type,
   });
   if (trabalhoError) throw trabalhoError;
+
+  // N arquivos por trabalho — mesmo padrão relacional de `coautores`
+  // (supabase/sql/010_trabalho_arquivos.sql).
+  const { error: arquivosError } = await supabase.from("trabalho_arquivos").insert(
+    arquivosParaGravar.map((a) => ({
+      trabalho_id: trabalhoId,
+      arquivo_path: a.path,
+      arquivo_nome: a.nome,
+      arquivo_tipo: a.tipo,
+    }))
+  );
+  if (arquivosError) throw arquivosError;
 
   const coautoresValidos = input.coautores.map((n) => n.trim()).filter(Boolean);
   if (coautoresValidos.length > 0) {

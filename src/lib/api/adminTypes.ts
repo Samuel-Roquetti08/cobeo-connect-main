@@ -82,6 +82,11 @@ export interface Inscrito {
 }
 
 // ─── Trabalho ────────────────────────────────────────────────────────────────
+export interface TrabalhoArquivo {
+  path: string;
+  nome: string;
+}
+
 export interface Trabalho {
   id: string;
   pedidoId: string;
@@ -93,8 +98,9 @@ export interface Trabalho {
   modalidade: string;
   formato: string;
   coautores: string[];
-  arquivoPath: string | null;
-  arquivoNome: string | null;
+  // N arquivos por trabalho (T5) — trabalhos submetidos antes dessa mudança
+  // caem no fallback das colunas antigas de `trabalhos` (ver adminData.ts).
+  arquivos: TrabalhoArquivo[];
   status: StatusPagamento;
   createdAt: string;
 }

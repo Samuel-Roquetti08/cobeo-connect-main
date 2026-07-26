@@ -27,14 +27,10 @@ export const Route = createFileRoute("/admin/trabalhos")({
 
 const STATUS_OPTS: (StatusPagamento | "Todos")[] = ["Todos", "pago", "pendente", "cancelado"];
 
-// Baixa o PDF do trabalho gerando uma URL assinada temporária (bucket privado)
-async function baixarArquivo(t: Trabalho) {
-  if (!t.arquivoPath) {
-    toast.error("Este trabalho não tem arquivo anexado.");
-    return;
-  }
+// Baixa um arquivo do trabalho gerando uma URL assinada temporária (bucket privado)
+async function baixarArquivo(arquivoPath: string) {
   try {
-    const url = await getTrabalhoDownloadUrl(t.arquivoPath);
+    const url = await getTrabalhoDownloadUrl(arquivoPath);
     window.open(url, "_blank");
   } catch (e) {
     toast.error("Erro ao gerar link de download", { description: (e as Error)?.message });
@@ -59,8 +55,8 @@ function TrabalhosPage() {
         if (!normalizarBusca(t.titulo).includes(s) && !normalizarBusca(t.responsavel).includes(s)) return false;
       }
       if (statusFilter !== "Todos" && t.status !== statusFilter) return false;
-      if (arquivoFilter === "com" && !t.arquivoPath) return false;
-      if (arquivoFilter === "sem" && t.arquivoPath) return false;
+      if (arquivoFilter === "com" && t.arquivos.length === 0) return false;
+      if (arquivoFilter === "sem" && t.arquivos.length > 0) return false;
       return true;
     });
   }, [all, q, statusFilter, arquivoFilter]);
@@ -80,7 +76,7 @@ function TrabalhosPage() {
         "Modalidade": t.modalidade,
         "Formato": formatoLabel(t.formato),
         "Coautores": t.coautores.join(" | "),
-        "Arquivo": t.arquivoNome ?? "—",
+        "Arquivos": t.arquivos.length > 0 ? t.arquivos.map((a) => a.nome).join(" | ") : "—",
         "Status": STATUS_LABELS[t.status],
         "Data": new Date(t.createdAt).toLocaleString("pt-BR"),
       }));
@@ -204,9 +200,9 @@ function TrabalhosPage() {
                   <td className="px-4 py-3 text-[12px] text-[#6b6b6b]">{t.modalidade}</td>
                   <td className="px-4 py-3 text-[12px] text-[#6b6b6b]">{formatoLabel(t.formato)}</td>
                   <td className="px-4 py-3">
-                    {t.arquivoPath ? (
+                    {t.arquivos.length > 0 ? (
                       <span className="inline-flex items-center gap-1.5 rounded bg-[#dbeafe] px-2 py-0.5 text-[11px] font-medium text-[#1e40af]">
-                        <Paperclip className="h-3 w-3" /> PDF
+                        <Paperclip className="h-3 w-3" /> {t.arquivos.length}
                       </span>
                     ) : (
                       <span className="rounded bg-[#f3f4f6] px-2 py-0.5 text-[11px] text-[#6b7280]">Pendente</span>
@@ -219,8 +215,9 @@ function TrabalhosPage() {
                         <Eye className="h-4 w-4" />
                       </button>
                       <button
-                        disabled={!t.arquivoPath}
-                        onClick={() => baixarArquivo(t)}
+                        disabled={t.arquivos.length === 0}
+                        onClick={() => setSelected(t)}
+                        title="Ver arquivos"
                         className="rounded p-1.5 text-[#6b6b6b] enabled:hover:bg-[#f3f0ee] enabled:hover:text-[#731111] disabled:opacity-30"
                       >
                         <Download className="h-4 w-4" />
@@ -284,14 +281,18 @@ function TrabalhoDrawer({ item, onClose }: { item: Trabalho; onClose: () => void
             <KV k="Data submissão" v={new Date(item.createdAt).toLocaleString("pt-BR")} />
             <div className="mt-2 text-[12px] text-[#6b6b6b]">{item.resumo}</div>
           </Sec>
-          <Sec title="Arquivo">
-            {item.arquivoPath ? (
-              <div className="flex items-center justify-between text-[13px]">
-                <span className="font-medium text-[#1a1a1a]">{item.arquivoNome ?? "arquivo.pdf"}</span>
-                <button onClick={() => baixarArquivo(item)} className="flex items-center gap-1 text-[#731111] hover:underline">
-                  <Download className="h-4 w-4" /> Baixar
-                </button>
-              </div>
+          <Sec title={`Arquivos (${item.arquivos.length})`}>
+            {item.arquivos.length > 0 ? (
+              <ul className="space-y-1.5">
+                {item.arquivos.map((a, i) => (
+                  <li key={`${a.path}-${i}`} className="flex items-center justify-between gap-3 text-[13px]">
+                    <span className="truncate font-medium text-[#1a1a1a]">{a.nome}</span>
+                    <button onClick={() => baixarArquivo(a.path)} className="flex shrink-0 items-center gap-1 text-[#731111] hover:underline">
+                      <Download className="h-4 w-4" /> Baixar
+                    </button>
+                  </li>
+                ))}
+              </ul>
             ) : <div className="text-[12px] text-[#6b6b6b]">Nenhum arquivo anexado.</div>}
           </Sec>
           <Sec title="Pagamento">
