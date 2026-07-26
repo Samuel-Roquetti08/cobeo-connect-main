@@ -1,14 +1,25 @@
 import { motion } from "framer-motion";
-import { Mail, Phone, MapPin, ExternalLink } from "lucide-react";
+import { Mail, Phone, MessageCircle, MapPin, ExternalLink } from "lucide-react";
 import { SectionTitle } from "./SectionTitle";
 import { OdontoSeal, UnifafibeLogo } from "./logos";
 import { contato } from "@/data/event";
 import { fadeUp, stagger } from "@/lib/anim";
 
+// contato.telefone é exibido em formato brasileiro; tel:/wa.me exigem
+// formato internacional (+55 + DDD + número, só dígitos).
+function telefoneInternacional(telefone: string): string {
+  return `55${telefone.replace(/\D/g, "")}`;
+}
+
 export function Contato() {
   const itensContato = [
     { icon: Mail, label: contato.email, href: `mailto:${contato.email}` },
-    ...(contato.telefone ? [{ icon: Phone, label: contato.telefone, href: `tel:${contato.telefone}` }] : []),
+    ...(contato.telefone
+      ? [
+          { icon: Phone, label: contato.telefone, href: `tel:+${telefoneInternacional(contato.telefone)}` },
+          { icon: MessageCircle, label: `${contato.telefone} (WhatsApp)`, href: `https://wa.me/${telefoneInternacional(contato.telefone)}` },
+        ]
+      : []),
     { icon: MapPin, label: contato.endereco, href: contato.maps },
   ];
 

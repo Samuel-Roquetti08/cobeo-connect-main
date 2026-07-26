@@ -577,7 +577,10 @@ export const palestrantes = [
 // ─── Contato ──────────────────────────────────────────────────────────────────
 export const contato = {
   email: "cobeounifafibe@gmail.com",
-  telefone: null, // [LOREM — aguardando telefone oficial]
+  // Fornecido pelo Fabiano em 24/07 (pendência #7 da lista do cliente) — é
+  // celular, confirmado como WhatsApp. Formato de exibição brasileiro aqui;
+  // Contato.tsx deriva o formato internacional (tel:/wa.me) a partir deste.
+  telefone: "(17) 99775-4827",
   endereco: "Centro Universitário UNIFAFIBE — Bebedouro/SP",
   maps: "https://maps.google.com/?q=Centro+Universit ário+UNIFAFIBE+Bebedouro+SP",
 };
