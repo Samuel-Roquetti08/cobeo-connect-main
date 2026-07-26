@@ -15,6 +15,7 @@ import {
   criarPedidoEvento, criarPedidoTrabalho, getEstadoInscricoes,
   type CupomAplicado, type EstadoInscricoes,
 } from "@/lib/api/pedidos";
+import { traduzirErro } from "@/lib/errorMessages";
 import {
   DadosForm,
   validateDados,
@@ -483,7 +484,7 @@ function FlowEvento({
 
       window.location.href = data.initPoint;
     } catch (e) {
-      setSubmitError((e as Error)?.message ?? "Não foi possível processar seu pedido. Tente novamente.");
+      setSubmitError(traduzirErro(e, "inscricao-evento"));
       setSubmitting(false);
     }
   }
@@ -868,7 +869,7 @@ function FlowTrabalho({
 
       window.location.href = data.initPoint;
     } catch (e) {
-      setSubmitError((e as Error)?.message ?? "Não foi possível processar seu pedido. Tente novamente.");
+      setSubmitError(traduzirErro(e, "inscricao-trabalho"));
       setSubmitting(false);
     }
   }
