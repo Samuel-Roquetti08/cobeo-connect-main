@@ -10,6 +10,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import QRCode from "npm:qrcode@1.5.4";
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
+import { classificarStatusPagamento, montarHtmlEmailStatus } from "../_shared/emailStatusPagamento.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -224,6 +225,47 @@ async function enviarEmailConfirmacao(pedido: {
   }
 }
 
+// E-mail específico por status não aprovado (recusado/pendente/falha — T1 do
+// doc de correções). Preserva o mesmo padrão de try/catch da confirmação:
+// falha do Resend nunca derruba o webhook.
+async function enviarEmailStatus(pedido: { nome: string; email: string }, categoria: ReturnType<typeof classificarStatusPagamento>) {
+  if (!RESEND_API_KEY) {
+    console.warn("[webhook-mercadopago] RESEND_API_KEY não configurado, pulando e-mail de status.");
+    return;
+  }
+  const { subject, html } = montarHtmlEmailStatus(categoria, pedido.nome, SITE_URL);
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${RESEND_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ from: RESEND_FROM, to: [pedido.email], subject, html }),
+    });
+    if (!res.ok) {
+      console.error("[webhook-mercadopago] Resend retornou erro (e-mail de status)", await res.text());
+    }
+  } catch (e) {
+    console.error("[webhook-mercadopago] falha ao enviar e-mail de status via Resend", e);
+  }
+}
+
+// Idempotência dos e-mails de status: reaproveita webhook_logs (sem coluna
+// nova) — se já existe um log `processado=true` cuja notificação classifica
+// na mesma categoria, o e-mail dessa categoria já foi enviado antes.
+async function categoriaJaComunicada(referenceId: string, categoria: ReturnType<typeof classificarStatusPagamento>): Promise<boolean> {
+  const { data } = await supabase
+    .from("webhook_logs")
+    .select("payload")
+    .eq("reference_id", referenceId)
+    .eq("processado", true);
+  return (data ?? []).some((log) => {
+    const payload = log.payload as { status?: string } | null;
+    return classificarStatusPagamento(payload?.status ?? null, false) === categoria;
+  });
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -289,9 +331,18 @@ Deno.serve(async (req: Request) => {
   }
 
   if (mpStatus !== "approved") {
-    // pending/in_process/rejected/etc: pedido continua pendente, cupom não é tocado.
-    await registrarLog(mpReferenceId, payment, false);
-    return jsonResponse({ ok: true, statusMp: mpStatus });
+    // pending/in_process/rejected/etc: pedido continua pendente, cupom não é
+    // tocado — essa decisão não muda. Só adiciona comunicação ao usuário.
+    const categoria = classificarStatusPagamento(mpStatus, false);
+    const jaComunicado = await categoriaJaComunicada(mpReferenceId, categoria);
+    if (!jaComunicado) {
+      await enviarEmailStatus(pedido, categoria);
+    }
+    // processado=true aqui marca "e-mail desta categoria já enviado" (não
+    // "pedido pago") — é assim que a idempotência acima reconhece notificações
+    // repetidas do MP para o mesmo status.
+    await registrarLog(mpReferenceId, payment, !jaComunicado);
+    return jsonResponse({ ok: true, statusMp: mpStatus, categoria, emailEnviado: !jaComunicado });
   }
 
   const { error: updateError } = await supabase
