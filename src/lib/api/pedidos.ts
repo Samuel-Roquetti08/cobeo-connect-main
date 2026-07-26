@@ -61,6 +61,12 @@ export async function getEstadoInscricoes(): Promise<EstadoInscricoes> {
 }
 
 // ─── Consulta de status (páginas de retorno do Mercado Pago) ─────────────────
+// Categoria do último status bruto do MP visto pelo webhook (supabase/sql/
+// 009_status_pagamento_detalhado.sql) — usada só para escolher a mensagem
+// certa quando o pedido ainda está "pendente" no banco (recusado e "aguardando
+// confirmação" têm a mesma pedidos.status, ver comentário na função SQL).
+export type CategoriaStatusPagamento = "recusado" | "pendente" | "falha" | "aprovado" | null;
+
 export interface StatusPedido {
   encontrado: boolean;
   status?: "pendente" | "pago" | "cancelado" | "reembolsado" | "expirado";
@@ -68,6 +74,7 @@ export interface StatusPedido {
   codigoInscricao?: string | null;
   metodoPagamento?: string | null;
   pagoEm?: string | null;
+  ultimaCategoriaPagamento?: CategoriaStatusPagamento;
 }
 
 // Nunca confia na URL de retorno do MP — sempre lê o status real do banco via
@@ -85,6 +92,7 @@ export async function consultarStatusPedido(mpReferenceId: string): Promise<Stat
     codigoInscricao: data.codigo_inscricao,
     metodoPagamento: data.metodo_pagamento,
     pagoEm: data.pago_em,
+    ultimaCategoriaPagamento: data.ultima_categoria_pagamento ?? null,
   };
 }
 

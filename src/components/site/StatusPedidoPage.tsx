@@ -99,14 +99,46 @@ export function StatusPedidoPage() {
     );
   }
 
+  // pedidos.status fica "pendente" tanto para "aguardando confirmação" quanto
+  // para "recusado" (o webhook não decide isso — ver comentário em
+  // supabase/sql/009_status_pagamento_detalhado.sql). A categoria distingue.
   if (resultado.status === "pendente") {
+    if (resultado.ultimaCategoriaPagamento === "recusado") {
+      return (
+        <CentroPagina>
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10" aria-hidden="true">
+            <X className="h-9 w-9 text-destructive" strokeWidth={3} />
+          </div>
+          <h1 className="mt-4 font-display text-2xl font-bold text-foreground">Pagamento não aprovado</h1>
+          <p className="mt-2 max-w-md font-body text-sm text-muted-foreground">
+            Seu pagamento não foi aprovado. Verifique os dados do cartão ou tente outro meio de
+            pagamento — nenhum valor foi cobrado.
+          </p>
+          <TentarNovamenteLink />
+        </CentroPagina>
+      );
+    }
+
+    if (resultado.ultimaCategoriaPagamento === "falha") {
+      return (
+        <CentroPagina>
+          <AlertCircle className="h-14 w-14 text-destructive" aria-hidden="true" />
+          <h1 className="mt-4 font-display text-2xl font-bold text-foreground">Não foi possível processar o pagamento</h1>
+          <p className="mt-2 max-w-md font-body text-sm text-muted-foreground">
+            Houve um problema técnico ao processar seu pagamento. Nenhum valor foi cobrado.
+          </p>
+          <TentarNovamenteLink />
+        </CentroPagina>
+      );
+    }
+
     return (
       <CentroPagina>
         <Clock className="h-14 w-14 text-gold" aria-hidden="true" />
-        <h1 className="mt-4 font-display text-2xl font-bold text-foreground">Pagamento em processamento</h1>
+        <h1 className="mt-4 font-display text-2xl font-bold text-foreground">Pagamento aguardando confirmação</h1>
         <p className="mt-2 max-w-md font-body text-sm text-muted-foreground">
           Se você pagou via PIX ou boleto, a confirmação pode levar alguns minutos. Você receberá um
-          e-mail assim que o pagamento for aprovado — não é necessário fazer nada.
+          e-mail assim que o pagamento for confirmado — não é necessário fazer nada.
         </p>
         <VoltarLink />
       </CentroPagina>
@@ -123,7 +155,7 @@ export function StatusPedidoPage() {
         O pagamento não foi concluído. Seu pedido continua reservado — você pode tentar novamente
         a partir do formulário de inscrição.
       </p>
-      <VoltarLink />
+      <TentarNovamenteLink />
     </CentroPagina>
   );
 }
@@ -144,5 +176,24 @@ function VoltarLink() {
     >
       Voltar ao Início
     </Link>
+  );
+}
+
+function TentarNovamenteLink() {
+  return (
+    <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+      <a
+        href="/#inscricoes"
+        className="inline-block rounded-md bg-primary px-6 py-3 font-body text-sm font-semibold text-white transition-colors hover:bg-[#8B1515] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      >
+        Tentar Novamente
+      </a>
+      <Link
+        to="/"
+        className="inline-block rounded-md border border-border px-6 py-3 font-body text-sm font-semibold text-foreground transition-colors hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      >
+        Voltar ao Início
+      </Link>
+    </div>
   );
 }
