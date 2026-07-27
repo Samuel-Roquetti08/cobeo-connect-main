@@ -12,7 +12,7 @@ import {
   type CategoriaId, type CursoId, type JantarOpcaoId,
 } from "@/data/event";
 import {
-  criarPedidoEvento, criarPedidoTrabalho, getEstadoInscricoes, validarArquivoTrabalho,
+  criarPedidoUnificado, getEstadoInscricoes, validarArquivoTrabalho,
   type CupomAplicado, type EstadoInscricoes,
 } from "@/lib/api/pedidos";
 import { traduzirErro } from "@/lib/errorMessages";
@@ -56,26 +56,35 @@ const INITIAL_COUPON: CouponState = { code: "", state: "idle", discount: 0, labe
 export function Inscricoes() {
   const [tab, setTab] = useState<TabKey>("evento");
 
+  // Doc 2 (unificação): quando true, mostra o pagamento combinado no lugar do
+  // conteúdo da aba — inscrição e/ou trabalho, o que estiver preenchido nas
+  // duas abas, viram UM pedido só. "Voltar" põe de volta na aba atual.
+  const [etapaFinal, setEtapaFinal] = useState(false);
+  function irParaAba(novaTab: TabKey) {
+    setEtapaFinal(false);
+    setTab(novaTab);
+  }
+
   // Estado de bloqueio, lido do banco no carregamento (fail-open em pedidos.ts)
   const [estado, setEstado] = useState<EstadoInscricoes>({ inscricoesBloqueadas: false, jantarBloqueado: false, cursosBloqueados: [] });
   useEffect(() => {
     getEstadoInscricoes().then(setEstado);
   }, []);
 
-  // Dados pessoais compartilhados entre as duas abas
+  // Dados pessoais e método de pagamento — compartilhados entre as duas abas
+  // e o pagamento final (é um pedido só, então um método só).
   const [dados, setDados] = useState<DadosFormState>(INITIAL_DADOS);
   const [errors, setErrors] = useState<DadosFormErrors>(EMPTY_ERRORS);
   const [consentimentoLgpd, setConsentimentoLgpd] = useState(false);
+  const [method, setMethod] = useState<Method>("pix");
 
   // Estado do FlowEvento
-  const [stepEvento, setStepEvento] = useState(0);
   const [categoriaId, setCategoriaId] = useState<CategoriaId>("aluno_unifafibe");
   const [cursosSelecionados, setCursosSelecionados] = useState<CursoId[]>([]);
   const [jantarOpcao, setJantarOpcao] = useState<JantarOpcaoId | null>(null);
   const [coupon, setCoupon] = useState<CouponState>(INITIAL_COUPON);
-  const [methodEvento, setMethodEvento] = useState<Method>("pix");
 
-  // T7: modal "vai apresentar trabalho?" antes de criar o pedido do evento.
+  // T7: modal "vai apresentar trabalho?" antes de ir pro pagamento do evento.
   // Fica aqui (não em FlowEvento) porque FlowEvento desmonta ao trocar de aba —
   // sem isso, a resposta seria esquecida a cada troca e o modal reapareceria.
   const [perguntaTrabalhoRespondida, setPerguntaTrabalhoRespondida] = useState(false);
@@ -91,7 +100,6 @@ export function Inscricoes() {
     formato: "",
   });
   const [files, setFiles] = useState<File[]>([]);
-  const [methodTrabalho, setMethodTrabalho] = useState<Method>("pix");
 
   return (
     <section id="inscricoes" className="bg-surface py-16 md:py-[120px]">
@@ -103,17 +111,34 @@ export function Inscricoes() {
           aria-label="Tipo de inscrição"
           className="mt-12 grid grid-cols-1 gap-2 sm:grid-cols-2"
         >
-          <TabButton id="tab-evento" controls="panel-evento" active={tab === "evento"} onClick={() => setTab("evento")}>
+          <TabButton id="tab-evento" controls="panel-evento" active={!etapaFinal && tab === "evento"} onClick={() => irParaAba("evento")}>
             Inscrição no Evento
           </TabButton>
-          <TabButton id="tab-trabalho" controls="panel-trabalho" active={tab === "trabalho"} onClick={() => setTab("trabalho")}>
+          <TabButton id="tab-trabalho" controls="panel-trabalho" active={!etapaFinal && tab === "trabalho"} onClick={() => irParaAba("trabalho")}>
             Submissão de Trabalho Acadêmico
           </TabButton>
         </div>
 
         <div className="rounded-b-xl rounded-tr-xl border border-border bg-surface p-6 sm:p-10">
           <AnimatePresence mode="wait">
-            {tab === "evento" ? (
+            {etapaFinal ? (
+              <motion.div key="pagamento" role="tabpanel" variants={fade} initial="hidden" animate="visible" exit="exit">
+                <PagamentoUnificado
+                  dados={dados}
+                  categoriaId={categoriaId}
+                  cursosSelecionados={cursosSelecionados}
+                  jantarOpcao={jantarOpcao}
+                  coupon={coupon}
+                  work={work}
+                  files={files}
+                  coautores={coauthors}
+                  consentimentoLgpd={consentimentoLgpd}
+                  method={method}
+                  setMethod={setMethod}
+                  onVoltar={() => setEtapaFinal(false)}
+                />
+              </motion.div>
+            ) : tab === "evento" ? (
               <motion.div key="evento" id="panel-evento" role="tabpanel" aria-labelledby="tab-evento"
                 variants={fade} initial="hidden" animate="visible" exit="exit"
               >
@@ -121,18 +146,17 @@ export function Inscricoes() {
                   dados={dados} setDados={setDados}
                   errors={errors} setErrors={setErrors}
                   consentimentoLgpd={consentimentoLgpd} setConsentimentoLgpd={setConsentimentoLgpd}
-                  step={stepEvento} setStep={setStepEvento}
                   categoriaId={categoriaId} setCategoriaId={setCategoriaId}
                   cursosSelecionados={cursosSelecionados} setCursosSelecionados={setCursosSelecionados}
                   jantarOpcao={jantarOpcao} setJantarOpcao={setJantarOpcao}
                   coupon={coupon} setCoupon={setCoupon}
-                  method={methodEvento} setMethod={setMethodEvento}
                   inscricoesBloqueadas={estado.inscricoesBloqueadas}
                   jantarBloqueado={estado.jantarBloqueado}
                   cursosBloqueados={estado.cursosBloqueados}
                   perguntaTrabalhoRespondida={perguntaTrabalhoRespondida}
                   setPerguntaTrabalhoRespondida={setPerguntaTrabalhoRespondida}
-                  onQuerSubmeterTrabalho={() => setTab("trabalho")}
+                  onQuerSubmeterTrabalho={() => irParaAba("trabalho")}
+                  onProntoParaPagamento={() => setEtapaFinal(true)}
                 />
               </motion.div>
             ) : (
@@ -147,7 +171,7 @@ export function Inscricoes() {
                   coauthors={coauthors} setCoauthors={setCoauthors}
                   work={work} setWork={setWork}
                   files={files} setFiles={setFiles}
-                  method={methodTrabalho} setMethod={setMethodTrabalho}
+                  onProntoParaPagamento={() => setEtapaFinal(true)}
                 />
               </motion.div>
             )}
@@ -301,13 +325,13 @@ function TrabalhoAcademicoModal({ open, onOpenChange, onContinuarPagamento, onQu
         </DialogHeader>
         <p className="font-body text-sm text-muted-foreground">
           A submissão de trabalho acadêmico é feita na aba "Trabalho Acadêmico" e tem valor
-          separado de R$ 70,00.
+          adicional de R$ 70,00.
         </p>
         <div className="flex items-start gap-2.5 rounded-lg border border-gold/50 bg-gold/10 px-3 py-2.5">
           <AlertTriangle className="h-4 w-4 shrink-0 text-gold" aria-hidden="true" />
           <p className="font-body text-xs text-[#8a6d1a]">
-            Atenção: a submissão é um pagamento separado da inscrição no evento. Se quiser fazer
-            as duas coisas, você fará dois pagamentos.
+            O valor da submissão entra no mesmo pedido da sua inscrição — você paga tudo junto,
+            num pagamento só.
           </p>
         </div>
         <DialogFooter className="sm:flex-row sm:gap-2">
@@ -338,36 +362,35 @@ interface FlowEventoProps {
   dados: DadosFormState; setDados: (v: DadosFormState) => void;
   errors: DadosFormErrors; setErrors: (v: DadosFormErrors) => void;
   consentimentoLgpd: boolean; setConsentimentoLgpd: (v: boolean) => void;
-  step: number; setStep: (v: number) => void;
   categoriaId: CategoriaId; setCategoriaId: (v: CategoriaId) => void;
   cursosSelecionados: CursoId[]; setCursosSelecionados: (v: CursoId[]) => void;
   jantarOpcao: JantarOpcaoId | null; setJantarOpcao: (v: JantarOpcaoId | null) => void;
   coupon: CouponState;
   setCoupon: (v: CouponState | ((c: CouponState) => CouponState)) => void;
-  method: Method; setMethod: (v: Method) => void;
   inscricoesBloqueadas: boolean;
   jantarBloqueado: boolean;
   cursosBloqueados: string[];
   perguntaTrabalhoRespondida: boolean;
   setPerguntaTrabalhoRespondida: (v: boolean) => void;
   onQuerSubmeterTrabalho: () => void;
+  // Doc 2: em vez de criar e pagar o pedido aqui dentro, avisa o pai que os
+  // dados desta aba estão prontos — o pagamento (unificado com a aba de
+  // trabalho, se preenchida) acontece em PagamentoUnificado.
+  onProntoParaPagamento: () => void;
 }
 
 function FlowEvento({
   dados, setDados, errors, setErrors,
   consentimentoLgpd, setConsentimentoLgpd,
-  step, setStep,
   categoriaId, setCategoriaId,
   cursosSelecionados, setCursosSelecionados,
   jantarOpcao, setJantarOpcao,
   coupon, setCoupon,
-  method, setMethod,
   inscricoesBloqueadas, jantarBloqueado, cursosBloqueados,
   perguntaTrabalhoRespondida, setPerguntaTrabalhoRespondida, onQuerSubmeterTrabalho,
+  onProntoParaPagamento,
 }: FlowEventoProps) {
 
-  const [submitting, setSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
   const [showTrabalhoModal, setShowTrabalhoModal] = useState(false);
 
   if (inscricoesBloqueadas) {
@@ -444,6 +467,12 @@ function FlowEvento({
     }
   }
 
+  // T7: antes de ir pro pagamento, pergunta uma única vez por sessão de
+  // preenchimento se o participante também vai submeter trabalho — a
+  // submissão é uma aba fácil de não notar. Doc 2: dizer "sim" não cria mais
+  // um segundo pedido, só leva pra aba de trabalho preencher os dados; o
+  // pagamento em si (unificado) só acontece quando o usuário chegar no fim
+  // de uma das duas abas.
   function handleContinuar() {
     if (cursosSelecionados.length === 0) {
       alert("Selecione pelo menos um curso para continuar.");
@@ -451,59 +480,19 @@ function FlowEvento({
     }
     const validated = validateDados(dados);
     setErrors(validated);
-    if (isDadosValid(validated)) setStep(1);
-  }
+    if (!isDadosValid(validated)) return;
 
-  async function handleConfirmarPagamento() {
-    setSubmitError(null);
-    setSubmitting(true);
-    try {
-      const cupomAplicado: CupomAplicado | null =
-        coupon.state === "valid" && coupon.tipo
-          ? { codigo: coupon.code, tipo: coupon.tipo, valor: coupon.valorBruto }
-          : null;
-
-      const { pedidoId } = await criarPedidoEvento({
-        nome: dados.nome,
-        email: dados.email,
-        telefone: dados.telefone,
-        whatsapp: dados.sameWhats ? dados.telefone : dados.whatsapp,
-        categoria: categoriaId,
-        cursosSelecionados,
-        jantarOpcao,
-        cupom: cupomAplicado,
-        metodoPagamento: method,
-        consentimentoLgpd,
-      });
-
-      const { data, error } = await supabase.functions.invoke("criar-preferencia", {
-        body: { pedidoId },
-      });
-      if (error) throw new Error(error.message ?? "Erro ao iniciar o pagamento.");
-      if (!data?.initPoint) throw new Error("Não foi possível iniciar o pagamento.");
-
-      window.location.href = data.initPoint;
-    } catch (e) {
-      setSubmitError(traduzirErro(e, "inscricao-evento"));
-      setSubmitting(false);
-    }
-  }
-
-  // T7: intercepta o clique final antes de criar o pedido do evento — pergunta
-  // uma única vez por sessão de preenchimento se o participante também vai
-  // submeter trabalho, já que a submissão é uma aba fácil de não notar.
-  function handleIrParaPagamento() {
     if (!perguntaTrabalhoRespondida) {
       setShowTrabalhoModal(true);
       return;
     }
-    handleConfirmarPagamento();
+    onProntoParaPagamento();
   }
 
   function handleModalContinuarPagamento() {
     setPerguntaTrabalhoRespondida(true);
     setShowTrabalhoModal(false);
-    handleConfirmarPagamento();
+    onProntoParaPagamento();
   }
 
   function handleModalQuerSubmeter() {
@@ -526,12 +515,10 @@ function FlowEvento({
 
   return (
     <div>
-      <Stepper steps={["Dados & Cursos", "Pagamento"]} current={step} />
+      <Stepper steps={["Dados & Cursos", "Pagamento"]} current={0} />
 
       <AnimatePresence mode="wait">
-        {/* STEP 1 — Dados e seleção de cursos */}
-        {step === 0 && (
-          <motion.div key="s1" variants={fade} initial="hidden" animate="visible" exit="exit">
+        <motion.div key="s1" variants={fade} initial="hidden" animate="visible" exit="exit">
             <div className="grid gap-8 md:grid-cols-[1fr_300px]">
               <div className="space-y-8">
 
@@ -775,24 +762,7 @@ function FlowEvento({
             <PrimaryButton onClick={handleContinuar} disabled={!consentimentoLgpd} className="mt-8">
               Continuar para Pagamento
             </PrimaryButton>
-          </motion.div>
-        )}
-
-        {/* STEP 2 — Pagamento */}
-        {step === 1 && (
-          <motion.div key="s2" variants={fade} initial="hidden" animate="visible" exit="exit">
-            <PaymentStep
-              method={method}
-              setMethod={setMethod}
-              total={total}
-              labelLinha={`${cursosSelecionados.length} curso${cursosSelecionados.length > 1 ? "s" : ""}${jantarOpcao ? " + Jantar" : ""}`}
-              onBack={() => setStep(0)}
-              onConfirm={handleIrParaPagamento}
-              submitting={submitting}
-              error={submitError}
-            />
-          </motion.div>
-        )}
+        </motion.div>
       </AnimatePresence>
 
       <TrabalhoAcademicoModal
@@ -817,7 +787,10 @@ interface FlowTrabalhoProps {
   work: { titulo: string; resumo: string; categoria: string; modalidade: string; formato: string };
   setWork: (v: { titulo: string; resumo: string; categoria: string; modalidade: string; formato: string }) => void;
   files: File[]; setFiles: (v: File[]) => void;
-  method: Method; setMethod: (v: Method) => void;
+  // Doc 2: em vez de criar e pagar o pedido aqui dentro, avisa o pai que os
+  // dados de trabalho estão prontos — o pagamento (unificado com a aba de
+  // evento, se preenchida) acontece em PagamentoUnificado.
+  onProntoParaPagamento: () => void;
 }
 
 function FlowTrabalho({
@@ -827,54 +800,14 @@ function FlowTrabalho({
   coauthors, setCoauthors,
   work, setWork,
   files, setFiles,
-  method, setMethod,
+  onProntoParaPagamento,
 }: FlowTrabalhoProps) {
-
-  const [submitting, setSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
 
   function handleContinuarDados() {
     const validated = validateDados(dados);
     setErrors(validated);
     if (isDadosValid(validated)) setStep(1);
   }
-
-  async function handleConfirmarPagamento() {
-    setSubmitError(null);
-    setSubmitting(true);
-    try {
-      if (files.length === 0) throw new Error("Selecione ao menos um arquivo do trabalho.");
-
-      const { pedidoId } = await criarPedidoTrabalho({
-        nome: dados.nome,
-        email: dados.email,
-        telefone: dados.telefone,
-        whatsapp: dados.sameWhats ? dados.telefone : dados.whatsapp,
-        titulo: work.titulo,
-        resumo: work.resumo,
-        categoria: work.categoria,
-        modalidade: work.modalidade as "Presencial" | "Online",
-        formato: work.formato as "Oral" | "Pôster",
-        coautores: coauthors,
-        arquivos: files,
-        metodoPagamento: method,
-        consentimentoLgpd,
-      });
-
-      const { data, error } = await supabase.functions.invoke("criar-preferencia", {
-        body: { pedidoId },
-      });
-      if (error) throw new Error(error.message ?? "Erro ao iniciar o pagamento.");
-      if (!data?.initPoint) throw new Error("Não foi possível iniciar o pagamento.");
-
-      window.location.href = data.initPoint;
-    } catch (e) {
-      setSubmitError(traduzirErro(e, "inscricao-trabalho"));
-      setSubmitting(false);
-    }
-  }
-
-  const precoTrabalho = trabalhoConfig.valor;
 
   return (
     <div>
@@ -1069,7 +1002,7 @@ function FlowTrabalho({
               </button>
               <PrimaryButton
                 disabled={!work.titulo || !work.categoria || !work.modalidade || !work.formato || files.length === 0}
-                onClick={() => setStep(2)}
+                onClick={onProntoParaPagamento}
                 className="flex-1"
               >
                 Continuar para Pagamento
@@ -1077,29 +1010,149 @@ function FlowTrabalho({
             </div>
           </motion.div>
         )}
-
-        {/* STEP 3 — Pagamento */}
-        {step === 2 && (
-          <motion.div key="t3" variants={fade} initial="hidden" animate="visible" exit="exit">
-            <div className="mb-4 flex items-start gap-3 rounded-lg border border-gold/50 bg-gold/10 px-4 py-3">
-              <Info className="h-5 w-5 shrink-0 text-gold" aria-hidden="true" />
-              <p className="font-body text-sm text-foreground">
-                Cupons de desconto não são aplicáveis à submissão de trabalho.
-              </p>
-            </div>
-            <PaymentStep
-              method={method}
-              setMethod={setMethod}
-              total={precoTrabalho}
-              labelLinha="Submissão de Trabalho Acadêmico"
-              onBack={() => setStep(1)}
-              onConfirm={handleConfirmarPagamento}
-              submitting={submitting}
-              error={submitError}
-            />
-          </motion.div>
-        )}
       </AnimatePresence>
+    </div>
+  );
+}
+
+/* ============================================================
+   PAGAMENTO UNIFICADO (Doc 2) — junta o que estiver preenchido nas duas
+   abas (cursos+jantar e/ou trabalho) num pedido só, com um pagamento só.
+   Cupom incide sobre o total combinado (decisão pendente de validação do
+   Fabiano — ver PLANO_COBEO_doc2_unificacao_pagamento.md).
+   ============================================================ */
+interface PagamentoUnificadoProps {
+  dados: DadosFormState;
+  categoriaId: CategoriaId;
+  cursosSelecionados: CursoId[];
+  jantarOpcao: JantarOpcaoId | null;
+  coupon: CouponState;
+  work: { titulo: string; resumo: string; categoria: string; modalidade: string; formato: string };
+  files: File[];
+  coautores: string[];
+  consentimentoLgpd: boolean;
+  method: Method; setMethod: (v: Method) => void;
+  onVoltar: () => void;
+}
+
+function PagamentoUnificado({
+  dados, categoriaId, cursosSelecionados, jantarOpcao, coupon,
+  work, files, coautores, consentimentoLgpd,
+  method, setMethod, onVoltar,
+}: PagamentoUnificadoProps) {
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const temInscricao = cursosSelecionados.length > 0;
+  const temTrabalho = Boolean(work.titulo && work.categoria && work.modalidade && work.formato && files.length > 0);
+
+  const valorCurso = categorias.find((c) => c.id === categoriaId)?.valorCurso ?? 0;
+  const subtotalCursos = temInscricao ? cursosSelecionados.length * valorCurso : 0;
+  const valorJantar = temInscricao && jantarOpcao ? jantar.opcoes.find((o) => o.id === jantarOpcao)?.valor ?? 0 : 0;
+  const valorTrabalho = temTrabalho ? trabalhoConfig.valor : 0;
+  const valorBase = subtotalCursos + valorJantar + valorTrabalho;
+
+  // Cupom incide sobre o total combinado — recalculado aqui (não reaproveita
+  // coupon.discount, que foi calculado só sobre os cursos no momento em que
+  // o cupom foi aplicado, na aba Evento, antes de saber se haveria trabalho).
+  const descontoCupom = coupon.state === "valid" && coupon.tipo
+    ? Math.round(
+        Math.min(
+          coupon.tipo === "percentual" ? valorBase * (coupon.valorBruto / 100) : coupon.valorBruto,
+          valorBase,
+        ) * 100,
+      ) / 100
+    : 0;
+  const total = Math.max(0, valorBase - descontoCupom);
+
+  const linhas = [
+    ...(temInscricao
+      ? cursosSelecionados.map((id) => {
+          const curso = cursos.find((c) => c.id === id);
+          return { label: curso?.titulo ?? id, value: valorCurso };
+        })
+      : []),
+    ...(temInscricao && jantarOpcao
+      ? [{ label: `Jantar — ${jantar.opcoes.find((o) => o.id === jantarOpcao)?.label}`, value: valorJantar }]
+      : []),
+    ...(temTrabalho ? [{ label: "Submissão de Trabalho Acadêmico", value: valorTrabalho }] : []),
+  ];
+
+  const descontoLabel = coupon.tipo === "percentual"
+    ? `${coupon.valorBruto}% de desconto`
+    : `R$ ${coupon.valorBruto.toFixed(2).replace(".", ",")} de desconto`;
+
+  const labelLinha = [
+    temInscricao ? `${cursosSelecionados.length} curso${cursosSelecionados.length > 1 ? "s" : ""}${jantarOpcao ? " + Jantar" : ""}` : null,
+    temTrabalho ? "Trabalho Acadêmico" : null,
+  ].filter(Boolean).join(" + ") || "Pedido";
+
+  async function handleConfirmar() {
+    setSubmitError(null);
+    setSubmitting(true);
+    try {
+      const cupomAplicado: CupomAplicado | null =
+        coupon.state === "valid" && coupon.tipo
+          ? { codigo: coupon.code, tipo: coupon.tipo, valor: coupon.valorBruto }
+          : null;
+
+      const { pedidoId } = await criarPedidoUnificado({
+        nome: dados.nome,
+        email: dados.email,
+        telefone: dados.telefone,
+        whatsapp: dados.sameWhats ? dados.telefone : dados.whatsapp,
+        metodoPagamento: method,
+        consentimentoLgpd,
+        ...(temInscricao ? {
+          categoria: categoriaId,
+          cursosSelecionados,
+          jantarOpcao,
+          cupom: cupomAplicado,
+        } : {}),
+        ...(temTrabalho ? {
+          trabalho: {
+            titulo: work.titulo,
+            resumo: work.resumo,
+            categoria: work.categoria,
+            modalidade: work.modalidade as "Presencial" | "Online",
+            formato: work.formato as "Oral" | "Pôster",
+            coautores,
+            arquivos: files,
+          },
+        } : {}),
+      });
+
+      const { data, error } = await supabase.functions.invoke("criar-preferencia", {
+        body: { pedidoId },
+      });
+      if (error) throw new Error(error.message ?? "Erro ao iniciar o pagamento.");
+      if (!data?.initPoint) throw new Error("Não foi possível iniciar o pagamento.");
+
+      window.location.href = data.initPoint;
+    } catch (e) {
+      setSubmitError(traduzirErro(e, "inscricao-unificada"));
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div>
+      <Stepper steps={["Dados", "Pagamento"]} current={1} />
+      <div className="grid gap-8 md:grid-cols-[1fr_300px]">
+        <div>
+          <PaymentStep
+            method={method}
+            setMethod={setMethod}
+            total={total}
+            labelLinha={labelLinha}
+            onBack={onVoltar}
+            onConfirm={handleConfirmar}
+            submitting={submitting}
+            error={submitError}
+          />
+        </div>
+        <OrderSummary lines={linhas} discount={descontoCupom} discountLabel={descontoLabel} total={total} />
+      </div>
     </div>
   );
 }
@@ -1131,7 +1184,7 @@ function CouponField({ state, value, onChange, onApply, label }: {
     <div role="group" aria-labelledby="cupom-label">
       <p id="cupom-label" className="mb-1 block font-body text-xs font-semibold text-foreground">
         Cupom de Desconto
-        <span className="ml-1.5 font-normal text-muted-foreground">(válido apenas para cursos)</span>
+        <span className="ml-1.5 font-normal text-muted-foreground">(desconto aplicado sobre o valor total do pedido)</span>
       </p>
       <div className="flex gap-2">
         <input

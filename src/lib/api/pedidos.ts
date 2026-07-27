@@ -313,3 +313,203 @@ export async function criarPedidoTrabalho(input: CriarPedidoTrabalhoInput): Prom
 
   return { pedidoId, mpReferenceId };
 }
+
+// ─── Pedido unificado (Doc 2) — inscrição e/ou trabalho num pedido só ────────
+// criarPedidoEvento/criarPedidoTrabalho acima ficam mantidas como referência/
+// fallback (regra do Doc 2: não apagar o código antigo até o novo estar
+// testado) — não são mais chamadas pelo front a partir desta mudança.
+export interface CriarPedidoUnificadoInput extends DadosComprador {
+  metodoPagamento: MetodoPagamento;
+  consentimentoLgpd: boolean;
+
+  // Inscrição — omitir ou deixar cursosSelecionados vazio para "sem inscrição".
+  categoria?: CategoriaId;
+  cursosSelecionados?: CursoId[];
+  jantarOpcao?: JantarOpcaoId | null;
+  cupom?: CupomAplicado | null;
+
+  // Trabalho — omitir para "sem trabalho".
+  trabalho?: {
+    titulo: string;
+    resumo: string;
+    categoria: string;
+    modalidade: "Presencial" | "Online";
+    formato: "Oral" | "Pôster";
+    coautores: string[];
+    arquivos: File[];
+  };
+}
+
+// Cupom agora incide sobre o total combinado (cursos + jantar + trabalho) —
+// decisão registrada no Doc 2, pendente de validação do Fabiano antes de
+// produção (o desconto real fica maior do que quando incidia só sobre cursos).
+function calcularDescontoCupomTotal(cupom: CupomAplicado | null, valorBase: number): number {
+  if (!cupom) return 0;
+  const bruto = cupom.tipo === "percentual" ? valorBase * (cupom.valor / 100) : cupom.valor;
+  return Math.round(Math.min(bruto, valorBase) * 100) / 100;
+}
+
+export async function criarPedidoUnificado(input: CriarPedidoUnificadoInput): Promise<PedidoCriado> {
+  if (!input.consentimentoLgpd) {
+    throw new Error("É necessário aceitar a política de privacidade para continuar.");
+  }
+
+  const temInscricao = Boolean(input.cursosSelecionados && input.cursosSelecionados.length > 0);
+  const temTrabalho = Boolean(input.trabalho);
+
+  if (!temInscricao && !temTrabalho) {
+    throw new Error("Selecione ao menos um curso ou preencha a submissão de trabalho.");
+  }
+
+  // ── Validações e cálculos da parte de inscrição (mesma lógica de
+  // criarPedidoEvento, só que sem criar nada ainda) ──────────────────────────
+  let categoriaInfo: (typeof categorias)[number] | undefined;
+  let cursosInfo: (typeof cursos)[number][] = [];
+  let valorCursos = 0;
+  let valorJantar = 0;
+
+  if (temInscricao) {
+    if (!input.categoria) throw new Error("Categoria inválida.");
+    categoriaInfo = categorias.find((c) => c.id === input.categoria);
+    if (!categoriaInfo) throw new Error("Categoria inválida.");
+
+    cursosInfo = input.cursosSelecionados!.map((id) => {
+      const c = cursos.find((c) => c.id === id);
+      if (!c) throw new Error(`Curso inválido: ${id}`);
+      return c;
+    });
+
+    // Checagem amigável (a garantia real é a trigger no banco) — mesmo padrão
+    // de criarPedidoEvento.
+    const { data: configRow } = await supabase
+      .from("configuracoes_evento")
+      .select("cursos_bloqueados")
+      .eq("id", 1)
+      .single();
+    const cursosBloqueados: string[] = configRow?.cursos_bloqueados ?? [];
+    const cursoBloqueado = cursosInfo.find((c) => cursosBloqueados.includes(c.id));
+    if (cursoBloqueado) {
+      throw new Error(`O curso "${cursoBloqueado.titulo}" não está mais disponível para inscrição.`);
+    }
+
+    valorCursos = cursosInfo.length * categoriaInfo.valorCurso;
+
+    if (input.jantarOpcao) {
+      if (cursosInfo.length < jantar.minimosCursos) {
+        throw new Error(`O jantar exige a compra de pelo menos ${jantar.minimosCursos} cursos.`);
+      }
+      const opcao = jantar.opcoes.find((o) => o.id === input.jantarOpcao);
+      if (!opcao) throw new Error("Opção de jantar inválida.");
+      valorJantar = opcao.valor;
+    }
+  }
+
+  // ── Validação da parte de trabalho (mesma lógica de criarPedidoTrabalho) ──
+  const valorTrabalho = temTrabalho ? trabalho.valor : 0;
+  if (temTrabalho) {
+    if (input.trabalho!.arquivos.length === 0) {
+      throw new Error("Selecione ao menos um arquivo do trabalho.");
+    }
+    for (const arquivo of input.trabalho!.arquivos) {
+      const erroArquivo = validarArquivoTrabalho(arquivo);
+      if (erroArquivo) throw new Error(`${arquivo.name}: ${erroArquivo}`);
+    }
+  }
+
+  // Cupom incide sobre o total combinado — não só sobre cursos (mudança do Doc 2).
+  const valorBaseCupom = valorCursos + valorJantar + valorTrabalho;
+  const descontoCupom = calcularDescontoCupomTotal(input.cupom ?? null, valorBaseCupom);
+
+  const pedidoId = crypto.randomUUID();
+  const prefixo = temInscricao && temTrabalho ? "CMB" : temTrabalho ? "TRB" : "EVT";
+  const mpReferenceId = `COBEO-${prefixo}-${pedidoId.slice(0, 8).toUpperCase()}`;
+
+  // Upload primeiro: se algum arquivo falhar, nenhum pedido é criado (padrão
+  // já usado em criarPedidoTrabalho — evita pedido órfão).
+  const arquivosParaGravar: { path: string; nome: string; tipo: string }[] = [];
+  if (temTrabalho) {
+    for (const arquivo of input.trabalho!.arquivos) {
+      const ext = arquivo.name.slice(arquivo.name.lastIndexOf(".")).toLowerCase();
+      const arquivoPath = `${pedidoId}/${crypto.randomUUID()}${ext}`;
+      const { error: uploadError } = await supabase.storage
+        .from("trabalhos-pdfs")
+        .upload(arquivoPath, arquivo, { contentType: arquivo.type, upsert: false });
+      if (uploadError) throw uploadError;
+      arquivosParaGravar.push({ path: arquivoPath, nome: arquivo.name, tipo: arquivo.type });
+    }
+  }
+
+  const { error: pedidoError } = await supabase.from("pedidos").insert({
+    id: pedidoId,
+    nome: input.nome,
+    email: input.email,
+    telefone: input.telefone,
+    whatsapp: input.whatsapp,
+    tem_inscricao: temInscricao,
+    tem_trabalho: temTrabalho,
+    categoria: temInscricao ? input.categoria : null,
+    valor_cursos: valorCursos,
+    valor_jantar: valorJantar,
+    valor_trabalho: valorTrabalho,
+    desconto_cupom: descontoCupom,
+    jantar_opcao: temInscricao ? input.jantarOpcao ?? null : null,
+    cupom_codigo: input.cupom?.codigo ?? null,
+    status: "pendente",
+    mp_reference_id: mpReferenceId,
+    metodo_pagamento: input.metodoPagamento,
+    consentimento_lgpd_em: new Date().toISOString(),
+  });
+  // Se a policy de RLS rejeitar (ex.: inscrições bloqueadas), o erro sobe daqui.
+  if (pedidoError) throw pedidoError;
+
+  if (temInscricao) {
+    const { error: inscritoError } = await supabase.from("inscritos").insert({
+      id: crypto.randomUUID(),
+      pedido_id: pedidoId,
+    });
+    if (inscritoError) throw inscritoError;
+
+    const pedidoCursosRows = cursosInfo.map((c) => ({
+      pedido_id: pedidoId,
+      curso_ref: c.id,
+      curso_titulo: c.titulo,
+      valor: categoriaInfo!.valorCurso,
+    }));
+    const { error: cursosError } = await supabase.from("pedido_cursos").insert(pedidoCursosRows);
+    if (cursosError) throw cursosError;
+  }
+
+  if (temTrabalho) {
+    const t = input.trabalho!;
+    const trabalhoId = crypto.randomUUID();
+    const { error: trabalhoError } = await supabase.from("trabalhos").insert({
+      id: trabalhoId,
+      pedido_id: pedidoId,
+      titulo: t.titulo,
+      resumo: t.resumo,
+      categoria: t.categoria,
+      modalidade: t.modalidade,
+      formato: t.formato,
+    });
+    if (trabalhoError) throw trabalhoError;
+
+    const { error: arquivosError } = await supabase.from("trabalho_arquivos").insert(
+      arquivosParaGravar.map((a) => ({
+        trabalho_id: trabalhoId,
+        arquivo_path: a.path,
+        arquivo_nome: a.nome,
+        arquivo_tipo: a.tipo,
+      }))
+    );
+    if (arquivosError) throw arquivosError;
+
+    const coautoresValidos = t.coautores.map((n) => n.trim()).filter(Boolean);
+    if (coautoresValidos.length > 0) {
+      const rows = coautoresValidos.map((nome) => ({ trabalho_id: trabalhoId, nome }));
+      const { error: coautoresError } = await supabase.from("coautores").insert(rows);
+      if (coautoresError) throw coautoresError;
+    }
+  }
+
+  return { pedidoId, mpReferenceId };
+}

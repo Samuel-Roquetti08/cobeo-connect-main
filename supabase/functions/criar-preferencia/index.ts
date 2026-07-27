@@ -57,9 +57,13 @@ Deno.serve(async (req: Request) => {
     return jsonResponse({ error: "Pedido com valor inválido." }, 422);
   }
 
-  const titulo = pedido.tem_trabalho && !pedido.tem_inscricao
-    ? "Submissão de trabalho — II COBEO"
-    : "Inscrição — II COBEO";
+  // Doc 2 (unificação): um pedido pode ter inscrição e trabalho juntos —
+  // esta function não decide isso, só lê o pedido e nomeia o item de acordo.
+  const titulo = pedido.tem_inscricao && pedido.tem_trabalho
+    ? "Inscrição + Trabalho Acadêmico — II COBEO"
+    : pedido.tem_trabalho
+      ? "Submissão de trabalho — II COBEO"
+      : "Inscrição — II COBEO";
 
   // O Mercado Pago rejeita auto_return quando back_urls não é uma URL pública
   // válida (ex.: localhost, durante desenvolvimento). Sem auto_return, o
