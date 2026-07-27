@@ -1059,12 +1059,22 @@ function FlowTrabalho({
               </Accordion>
             </div>
 
-            <PrimaryButton
-              disabled={!work.titulo || !work.categoria || !work.modalidade || !work.formato || files.length === 0}
-              onClick={() => setStep(2)}
-            >
-              Continuar para Pagamento
-            </PrimaryButton>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setStep(0)}
+                className="rounded-md border border-border px-6 py-4 font-body text-sm font-semibold text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              >
+                Voltar
+              </button>
+              <PrimaryButton
+                disabled={!work.titulo || !work.categoria || !work.modalidade || !work.formato || files.length === 0}
+                onClick={() => setStep(2)}
+                className="flex-1"
+              >
+                Continuar para Pagamento
+              </PrimaryButton>
+            </div>
           </motion.div>
         )}
 
