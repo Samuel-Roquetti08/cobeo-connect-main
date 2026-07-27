@@ -1045,6 +1045,7 @@ function PagamentoUnificado({
 
   const temInscricao = cursosSelecionados.length > 0;
   const temTrabalho = Boolean(work.titulo && work.categoria && work.modalidade && work.formato && files.length > 0);
+  console.log("[DEBUG PagamentoUnificado]", { cursosSelecionados, temInscricao, temTrabalho, work, filesLen: files.length });
 
   const valorCurso = categorias.find((c) => c.id === categoriaId)?.valorCurso ?? 0;
   const subtotalCursos = temInscricao ? cursosSelecionados.length * valorCurso : 0;
