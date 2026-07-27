@@ -1,11 +1,12 @@
 import { createClient } from "@supabase/supabase-js";
 
-// Cliente público do Supabase — usa a anon key (pode ficar no frontend).
-// A anon key é protegida por RLS: sozinha, ela não dá acesso a dados sensíveis.
+// Cliente público do Supabase — usa a publishable key (sb_publishable_...,
+// pode ficar no frontend). Ela é protegida por RLS: sozinha, não dá acesso a
+// dados sensíveis. Substitui a antiga anon key (JWT legacy).
 //
 // As variáveis VITE_ são públicas por definição (vão para o bundle do browser).
-// NUNCA coloque a service_role key aqui — ela ignora RLS e só pode viver
-// no servidor (Edge Functions / variáveis de ambiente do Cloudflare).
+// NUNCA coloque a secret key (sb_secret_...) aqui — ela ignora RLS e só pode
+// viver no servidor (Edge Functions / variáveis de ambiente do Cloudflare).
 
 // Este módulo roda em escopo global: no SSR do Cloudflare, um valor inválido
 // aqui derruba TODA rota com 500 antes de qualquer render. Um console.warn
@@ -31,7 +32,7 @@ function exigirEnv(nome: string, valor: string | undefined): string {
 }
 
 const supabaseUrl = exigirEnv("VITE_SUPABASE_URL", import.meta.env.VITE_SUPABASE_URL);
-const supabaseAnonKey = exigirEnv("VITE_SUPABASE_ANON_KEY", import.meta.env.VITE_SUPABASE_ANON_KEY);
+const supabasePublishableKey = exigirEnv("VITE_SUPABASE_PUBLISHABLE_KEY", import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY);
 
 if (!/^https?:\/\//.test(supabaseUrl)) {
   throw new Error(
@@ -40,7 +41,7 @@ if (!/^https?:\/\//.test(supabaseUrl)) {
   );
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+export const supabase = createClient(supabaseUrl, supabasePublishableKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,

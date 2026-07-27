@@ -13,7 +13,9 @@ import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { classificarStatusPagamento, montarHtmlEmailStatus } from "../_shared/emailStatusPagamento.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+// SUPABASE_SECRET_KEYS é injetado como dicionário JSON (permite rotação de
+// chaves) — a entrada "default" é a chave sb_secret_ ativa no momento.
+const SECRET_KEY = JSON.parse(Deno.env.get("SUPABASE_SECRET_KEYS")!)["default"];
 const MP_ACCESS_TOKEN = Deno.env.get("MP_ACCESS_TOKEN")!;
 // Override só para teste local (PLANO_COBEO_teste_webhook_isolado) — sem a
 // variável definida, produção usa exatamente a mesma URL de sempre.
@@ -26,7 +28,7 @@ const RESEND_FROM = Deno.env.get("RESEND_FROM") ?? "COBEO <onboarding@resend.dev
 // default quando o domínio do Registro.br substituir o workers.dev.
 const SITE_URL = Deno.env.get("SITE_URL") ?? "https://cobeo-connect-main.samuelroquetti.workers.dev";
 
-const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
+const supabase = createClient(SUPABASE_URL, SECRET_KEY);
 
 // Fonte de verdade real é src/data/event.ts (frontend, decisão D13). Duplicado
 // aqui em escala mínima só para compor o e-mail — Edge Functions não importam

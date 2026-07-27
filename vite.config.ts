@@ -25,7 +25,7 @@ const problemas = Object.entries(env).flatMap(([nome, valor]) => {
   return [];
 });
 
-for (const nome of ["VITE_SUPABASE_URL", "VITE_SUPABASE_ANON_KEY", "VITE_MP_PUBLIC_KEY"]) {
+for (const nome of ["VITE_SUPABASE_URL", "VITE_SUPABASE_PUBLISHABLE_KEY", "VITE_MP_PUBLIC_KEY"]) {
   if (!env[nome]) problemas.push(`${nome}: ausente`);
 }
 
