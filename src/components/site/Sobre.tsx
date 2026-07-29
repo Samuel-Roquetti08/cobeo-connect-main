@@ -59,7 +59,7 @@ export function Sobre() {
             >
               <span>13+ Palestrantes</span>
               <span className="inline-block h-1.5 w-1.5 rounded-full bg-gold" />
-              <span>32h de Conteúdo</span>
+              <span>20h de Conteúdo</span>
             </motion.div>
           </motion.div>
         </div>

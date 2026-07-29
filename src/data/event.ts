@@ -8,7 +8,7 @@ export const evento = {
 };
 
 export const stats = [
-  { value: 7, suffix: "+", label: "Cursos Confirmados" },
+  { value: 14, suffix: "", label: "Cursos Confirmados" },
   { value: 3, suffix: " dias", label: "De Conteúdo" },
   { value: 100, suffix: "%", label: "Certificado Digital Incluso" },
 ];
@@ -373,7 +373,7 @@ export const palestrantes = [
     foto: "/palestrantes/kelly-moreira.jpg",
     especialidade: "HMI / Odontopediatria",
     instituicao: "São Leopoldo Mandic",
-    tag: "HMI · Mandic",
+    tag: "ODONTOPEDIATRIA · DENTÍSTICA",
     objectPosition: "center 30%",
     certificacoes: [
       "20 anos de experiência",
@@ -396,7 +396,7 @@ export const palestrantes = [
     foto: "/palestrantes/marcelo-monnazzi.jpg",
     especialidade: "Cirurgia Buco-Maxilo-Facial / Traumatologia",
     instituicao: "FOAR-UNESP",
-    tag: "CTBMF · FOAR-UNESP",
+    tag: "CIRURGIA BUCO-MAXILO-FACIAL",
     certificacoes: [
       "Residência em CTBMF — UNESP",
       "Mestrado em CTBMF — Unimar",
@@ -412,7 +412,7 @@ export const palestrantes = [
     foto: "/palestrantes/luiz-fernando-oliveira.jpg",
     especialidade: "Endodontia",
     instituicao: "FOAR-UNESP",
-    tag: "Endodontia · UNESP",
+    tag: "ENDODONTIA",
     certificacoes: [
       "Mestre e Especialista em Endodontia",
       "Especialista em Reabilitação Oral",
@@ -426,7 +426,7 @@ export const palestrantes = [
     foto: "/palestrantes/reyna-aguilar-quispe.jpg",
     especialidade: "Odontologia Hospitalar / Fissura Labiopalatina",
     instituicao: "UNORTE / FUNFARME",
-    tag: "Hospitalar · UNORTE",
+    tag: "ODONTOLOGIA HOSPITALAR",
     certificacoes: [
       "Cirurgiã-dentista pela UMSA/UNESP",
       "Especialista em Odontopediatria pelo Hospital de Anomalias Craniofaciais (HRAC-USP)",
@@ -440,11 +440,11 @@ export const palestrantes = [
   },
   {
     id: "stela-carolina-aguiar",
-    nome: "Dra. Stela Carolina Vasques Baldin Aguiar",
+    nome: "Profa. Dra. Stela Carolina Vasques Baldin Aguiar",
     foto: "/palestrantes/stela-carolina-aguiar.jpg",
     especialidade: "Odontologia Hospitalar",
     instituicao: "FUNFARME / Hospital Austa",
-    tag: "Hospitalar · FUNFARME",
+    tag: "ODONTOLOGIA HOSPITALAR",
     objectPosition: "center 30%",
     certificacoes: [
       "Mestre em Ciências Médicas",
@@ -463,7 +463,7 @@ export const palestrantes = [
     nome: "Prof. Me. Renan Souza",
     foto: "/palestrantes/renan-souza.jpg",
     especialidade: "Periodontia / Microcirurgia",
-    instituicao: null,
+    instituicao: "GENGIVA DESIGN · GOLGRAN",
     tag: "Periodontia",
     certificacoes: [
       "Graduação — UMESP",
@@ -478,9 +478,9 @@ export const palestrantes = [
     id: "alvaro-junqueira",
     nome: "Prof. Dr. Alvaro Augusto Junqueira Júnior",
     foto: "/palestrantes/alvaro-junqueira.jpg",
-    especialidade: "Dentística",
-    instituicao: "FORP-USP",
-    tag: "Dentística · FORP-USP",
+    especialidade: "Dentística Estética",
+    instituicao: "IOA, ECO ACADEMY E AORP",
+    tag: "DENTÍSTICA E PRÓTESE",
     certificacoes: [
       "Graduado em Odontologia pela Universidade Federal de Alfenas",
       "Especialista, Mestre e Doutor em Dentística — FORP-USP",
@@ -494,7 +494,7 @@ export const palestrantes = [
     nome: "Prof. Dr. Paulo Saad",
     foto: "/palestrantes/paulo-saad.jpg",
     especialidade: "Implantodontia",
-    instituicao: null,
+    instituicao: "FAOA, AORPE",
     tag: "Implantodontia",
     objectPosition: "center 30%",
     // Reenviado legível pelo Samuel em 18/07 (o print anterior estava cortado).
@@ -510,8 +510,8 @@ export const palestrantes = [
     nome: "Prof. Dr. Renato Assis Machado",
     foto: "/palestrantes/renato-assis-machado.jpg",
     especialidade: "Harmonização Orofacial",
-    instituicao: "FOP-UNICAMP",
-    tag: "Harmonização · UNICAMP",
+    instituicao: "UNIFENAS, IOA, USJT, UNIGÁ, IOA",
+    tag: "HARMONIZAÇÃO OROFACIAL",
     certificacoes: [
       "Graduado em Odontologia pela Universidade José do Rosário Vellano (Unifenas)",
       "Especialista em Harmonização Orofacial — IOA São Paulo",
@@ -529,8 +529,8 @@ export const palestrantes = [
     nome: "Prof. Dr. Ricardo Henrique Alves da Silva",
     foto: "/palestrantes/ricardo-henrique-silva.jpg",
     especialidade: "Odontologia Legal",
-    instituicao: "FORP-USP",
-    tag: "Legal · FORP-USP",
+    instituicao: "INTERPOL, IOFOS",
+    tag: "ODONTOLOGIA LEGAL",
     objectPosition: "center 30%",
     certificacoes: [
       "Cirurgião-dentista graduado pela USP-Bauru",
@@ -549,7 +549,7 @@ export const palestrantes = [
     foto: "/palestrantes/matheus-herreira-ferreira.jpg",
     especialidade: "Dor Orofacial",
     instituicao: "FORP-USP",
-    tag: "Dor Orofacial · USP",
+    tag: "DOR OROFACIAL",
     objectPosition: "center 30%",
     certificacoes: [
       "Professor Doutor da Faculdade de Odontologia de Ribeirão Preto (USP)",
@@ -564,7 +564,7 @@ export const palestrantes = [
     foto: "/palestrantes/silvio-bellini.jpg",
     especialidade: "Ortodontia",
     instituicao: "FOB-USP",
-    tag: "Ortodontia · USP",
+    tag: "ORTODONTIA",
     certificacoes: [
       "Graduação — UNESP-Araçatuba",
       "Especialista em Ortodontia — APCD-Santo André",
