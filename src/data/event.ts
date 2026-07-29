@@ -17,7 +17,7 @@ export const stats = [
 export const categorias = [
   { id: "aluno_unifafibe" as const, label: "Aluno UNIFAFIBE", valorCurso: 35 },
   { id: "aluno_externo"   as const, label: "Aluno Externo",   valorCurso: 40 },
-  { id: "profissional"    as const, label: "Profissional",    valorCurso: 50 },
+  { id: "profissional"    as const, label: "Profissional",    valorCurso: 46 },
 ] as const;
 
 export type CategoriaId = typeof categorias[number]["id"];
