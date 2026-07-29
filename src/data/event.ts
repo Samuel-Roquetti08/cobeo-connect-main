@@ -608,10 +608,7 @@ export const palestrantes = [
   {
     id: "andrea-tolentino",
     nome: "Profa. Dra. Andrea Tolentino",
-    // TODO(Samuel): foto enviada pelo Fabiano (1785306474512_image.png) não
-    // está no repo — colocar em src/assets/images/palestrante-andrea-tolentino.png
-    // e trocar este `null` pelo import, igual aos demais palestrantes.
-    foto: null,
+    foto: "/palestrantes/andrea-tolentino.png",
     especialidade: "Odontologia do Esporte",
     instituicao: null,
     tag: "ODONTOLOGIA DO ESPORTE",
@@ -731,6 +728,33 @@ export const diasEvento = [
 ];
 
 export type DiaId = "dia1" | "dia2" | "dia3";
+
+// ─── Patrocinadores (Bloco G) ─────────────────────────────────────────────────
+// TODO(Samuel): nenhum arquivo de logo está no repo ainda (PDFs/PNGs/JPEGs
+// enviados pelo Fabiano não chegaram no projeto). `logo: null` faz o card
+// renderizar o nome em texto dentro da moldura até os arquivos reais
+// chegarem — trocar por um import de src/assets/images/patrocinadores/
+// quando disponível (ver Patrocinadores.tsx).
+export interface Patrocinador {
+  nome: string;
+  logo: string | null;
+}
+
+export const patrocinadores: Patrocinador[] = [
+  { nome: "Dentsply Sirona", logo: null },
+  { nome: "Gnatus", logo: null },
+  { nome: "Titaniumfix", logo: null },
+  { nome: "Orais", logo: null },
+  { nome: "Alliance Microscopia", logo: null },
+  { nome: "DVI", logo: null },
+  { nome: "Nova Odontologia", logo: null },
+  { nome: "Dra. Ana Luiza Cabral — Endodontia", logo: null },
+  { nome: "Verve Medtech", logo: null },
+  { nome: "Te Levo Mobile", logo: null },
+  { nome: "Univy Technology", logo: null },
+  { nome: "Golgran-Millennium", logo: null },
+  { nome: "Facciodonto", logo: null },
+];
 
 // precos (legado)
 export const precos = {

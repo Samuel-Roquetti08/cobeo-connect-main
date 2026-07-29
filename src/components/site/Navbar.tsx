@@ -7,6 +7,7 @@ const links = [
   { href: "#palestrantes", label: "Palestrantes" },
   { href: "#programacao", label: "Programação" },
   { href: "#inscricoes", label: "Inscrições" },
+  { href: "#patrocinadores", label: "Patrocinadores" },
   { href: "#contato", label: "Contato" },
 ];
 

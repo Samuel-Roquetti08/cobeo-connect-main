@@ -5,6 +5,7 @@ import { Sobre } from "@/components/site/Sobre";
 import { Palestrantes } from "@/components/site/Palestrantes";
 import { Programacao } from "@/components/site/Programacao";
 import { Inscricoes } from "@/components/site/Inscricoes";
+import { Patrocinadores } from "@/components/site/Patrocinadores";
 import { Contato } from "@/components/site/Contato";
 import { Footer } from "@/components/site/Footer";
 import { WhatsAppFloatButton } from "@/components/site/WhatsAppFloatButton";
@@ -38,6 +39,7 @@ function Index() {
         <Palestrantes />
         <Programacao />
         <Inscricoes />
+        <Patrocinadores />
         <Contato />
       </main>
       <Footer />
