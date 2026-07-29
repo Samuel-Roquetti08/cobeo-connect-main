@@ -561,6 +561,10 @@ export const palestrantes = [
     instituicao: "INTERPOL, IOFOS",
     tag: "ODONTOLOGIA LEGAL",
     objectPosition: "center 30%",
+    // Bloco F3: cabeça cortada nas bordas + foto levemente inclinada.
+    // Valores de partida do Samuel — ajustar visualmente se ainda não
+    // centralizar bem.
+    fotoTransform: "translateY(20px) rotate(20deg) scale(1.25)",
     certificacoes: [
       "Cirurgião-dentista graduado pela USP-Bauru",
       "Especialista em Odontologia Legal. Mestrado pela USP-Bauru",
@@ -702,6 +706,13 @@ export type Palestrante = {
    * Omitido = "center" (padrão).
    */
   objectPosition?: string;
+  /**
+   * Correção pontual de enquadramento via CSS transform (rotate/translate),
+   * para fotos com problema de recorte/inclinação (Bloco F3). Sempre incluir
+   * scale() ao rotacionar — sem isso sobram cantos vazios nas quinas do
+   * círculo, já que o container tem overflow hidden.
+   */
+  fotoTransform?: string;
 };
 
 export const palestrasAvulsas = cursos.map((c) => ({

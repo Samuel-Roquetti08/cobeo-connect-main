@@ -27,15 +27,21 @@ function iniciais(nome: string): string {
 function Avatar({ p, size = 100 }: { p: Palestrante; size?: number }) {
   return (
     <div
-      className="mx-auto shrink-0 rounded-full ring-[3px] ring-primary ring-offset-[3px] ring-offset-background transition-colors group-hover:ring-gold"
+      className="mx-auto shrink-0 overflow-hidden rounded-full ring-[3px] ring-primary ring-offset-[3px] ring-offset-background transition-colors group-hover:ring-gold"
       style={{ width: size, height: size }}
     >
       {p.foto ? (
         <img
           src={p.foto}
           alt={p.nome}
-          className="h-full w-full rounded-full object-cover"
-          style={{ objectPosition: p.objectPosition ?? "center" }}
+          className="h-full w-full object-cover"
+          style={{
+            objectPosition: p.objectPosition ?? "center",
+            // Correção pontual de enquadramento (Bloco F3) — cabeça cortada e
+            // foto inclinada. scale é obrigatório: girar uma imagem retangular
+            // sem ampliar deixa cantos vazios nas quinas do círculo.
+            transform: p.fotoTransform,
+          }}
         />
       ) : (
         <div className="flex h-full w-full items-center justify-center rounded-full bg-primary/10 font-display text-2xl font-bold text-primary">

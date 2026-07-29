@@ -7,6 +7,7 @@ import { Programacao } from "@/components/site/Programacao";
 import { Inscricoes } from "@/components/site/Inscricoes";
 import { Contato } from "@/components/site/Contato";
 import { Footer } from "@/components/site/Footer";
+import { WhatsAppFloatButton } from "@/components/site/WhatsAppFloatButton";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -40,6 +41,7 @@ function Index() {
         <Contato />
       </main>
       <Footer />
+      <WhatsAppFloatButton />
     </>
   );
 }
