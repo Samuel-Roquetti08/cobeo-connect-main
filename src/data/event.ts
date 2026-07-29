@@ -572,6 +572,25 @@ export const palestrantes = [
       "Professor de Ortodontia — USP-Bauru",
     ],
   },
+  {
+    id: "andrea-tolentino",
+    nome: "Profa. Dra. Andrea Tolentino",
+    // TODO(Samuel): foto enviada pelo Fabiano (1785306474512_image.png) não
+    // está no repo — colocar em src/assets/images/palestrante-andrea-tolentino.png
+    // e trocar este `null` pelo import, igual aos demais palestrantes.
+    foto: null,
+    especialidade: "Odontologia do Esporte",
+    instituicao: null,
+    tag: "ODONTOLOGIA DO ESPORTE",
+    certificacoes: [
+      "Graduação em Odontologia — UFU",
+      "Mestre em Ciências Odontológicas, ênfase em Odontologia do Esporte — USP-SP",
+      "Especialista em Dentística — FUNORTE",
+      "Habilitação em Laserterapia — Fundecto-USP",
+      "Doutora em Dentística — USP-SP",
+      "Fundadora do Clube de Odontologia do Esporte — +400 dentistas capacitados",
+    ],
+  },
 ];
 
 // ─── Contato ──────────────────────────────────────────────────────────────────
