@@ -70,7 +70,7 @@ export async function getInscritos(): Promise<Inscrito[]> {
   // 2. Busca inscritos (codigo_inscricao, presença) desses pedidos
   const { data: inscritos, error: errInscritos } = await supabase
     .from("inscritos")
-    .select("id, pedido_id, codigo_inscricao, presenca, primeiro_checkin_em")
+    .select("id, pedido_id, codigo_inscricao, presenca, primeiro_checkin_em, ra, instituicao_externa")
     .in("pedido_id", pedidoIds);
   if (errInscritos) throw errInscritos;
 
@@ -127,6 +127,8 @@ export async function getInscritos(): Promise<Inscrito[]> {
       whatsapp: p.whatsapp,
       categoria: (p.categoria as CategoriaParticipante) ?? null,
       codigoInscricao: ins?.codigo_inscricao ?? null,
+      ra: ins?.ra ?? null,
+      instituicaoExterna: ins?.instituicao_externa ?? null,
       cursos: cursosPorPedido.get(p.id) ?? [],
       jantarOpcao: (p.jantar_opcao as JantarOpcao) ?? null,
       temTrabalho: p.tem_trabalho,

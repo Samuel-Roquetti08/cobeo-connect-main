@@ -83,6 +83,10 @@ export function Inscricoes() {
   const [cursosSelecionados, setCursosSelecionados] = useState<CursoId[]>([]);
   const [jantarOpcao, setJantarOpcao] = useState<JantarOpcaoId | null>(null);
   const [coupon, setCoupon] = useState<CouponState>(INITIAL_COUPON);
+  // RA / instituição externa — campo condicional por categoria (Bloco C),
+  // sem validação de formato, só coleta.
+  const [ra, setRa] = useState("");
+  const [instituicaoExterna, setInstituicaoExterna] = useState("");
 
   // T7: modal "vai apresentar trabalho?" antes de ir pro pagamento do evento.
   // Fica aqui (não em FlowEvento) porque FlowEvento desmonta ao trocar de aba —
@@ -128,6 +132,8 @@ export function Inscricoes() {
                   categoriaId={categoriaId}
                   cursosSelecionados={cursosSelecionados}
                   jantarOpcao={jantarOpcao}
+                  ra={ra}
+                  instituicaoExterna={instituicaoExterna}
                   coupon={coupon}
                   work={work}
                   files={files}
@@ -149,6 +155,8 @@ export function Inscricoes() {
                   categoriaId={categoriaId} setCategoriaId={setCategoriaId}
                   cursosSelecionados={cursosSelecionados} setCursosSelecionados={setCursosSelecionados}
                   jantarOpcao={jantarOpcao} setJantarOpcao={setJantarOpcao}
+                  ra={ra} setRa={setRa}
+                  instituicaoExterna={instituicaoExterna} setInstituicaoExterna={setInstituicaoExterna}
                   coupon={coupon} setCoupon={setCoupon}
                   inscricoesBloqueadas={estado.inscricoesBloqueadas}
                   jantarBloqueado={estado.jantarBloqueado}
@@ -365,6 +373,8 @@ interface FlowEventoProps {
   categoriaId: CategoriaId; setCategoriaId: (v: CategoriaId) => void;
   cursosSelecionados: CursoId[]; setCursosSelecionados: (v: CursoId[]) => void;
   jantarOpcao: JantarOpcaoId | null; setJantarOpcao: (v: JantarOpcaoId | null) => void;
+  ra: string; setRa: (v: string) => void;
+  instituicaoExterna: string; setInstituicaoExterna: (v: string) => void;
   coupon: CouponState;
   setCoupon: (v: CouponState | ((c: CouponState) => CouponState)) => void;
   inscricoesBloqueadas: boolean;
@@ -385,6 +395,7 @@ function FlowEvento({
   categoriaId, setCategoriaId,
   cursosSelecionados, setCursosSelecionados,
   jantarOpcao, setJantarOpcao,
+  ra, setRa, instituicaoExterna, setInstituicaoExterna,
   coupon, setCoupon,
   inscricoesBloqueadas, jantarBloqueado, cursosBloqueados,
   perguntaTrabalhoRespondida, setPerguntaTrabalhoRespondida, onQuerSubmeterTrabalho,
@@ -537,6 +548,8 @@ function FlowEvento({
                         onClick={() => {
                           setCategoriaId(cat.id);
                           setCoupon(INITIAL_COUPON);
+                          setRa("");
+                          setInstituicaoExterna("");
                         }}
                         className={`relative rounded-xl border-2 px-4 py-4 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
                           categoriaId === cat.id
@@ -556,6 +569,53 @@ function FlowEvento({
                       </button>
                     ))}
                   </div>
+
+                  {/* RA / instituição — condicional por categoria, sem validação de formato */}
+                  {categoriaId === "aluno_unifafibe" && (
+                    <div className="mt-3">
+                      <label htmlFor="campo-ra" className="mb-1 block font-body text-xs font-semibold text-foreground">
+                        RA
+                      </label>
+                      <input
+                        id="campo-ra"
+                        type="text"
+                        value={ra}
+                        onChange={(e) => setRa(e.target.value)}
+                        placeholder="Seu RA na UNIFAFIBE"
+                        className="w-full rounded-md border border-input bg-surface px-3 py-2 font-body text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20 sm:max-w-xs"
+                      />
+                    </div>
+                  )}
+                  {categoriaId === "aluno_externo" && (
+                    <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                      <div>
+                        <label htmlFor="campo-instituicao-externa" className="mb-1 block font-body text-xs font-semibold text-foreground">
+                          Instituição de ensino
+                        </label>
+                        <input
+                          id="campo-instituicao-externa"
+                          type="text"
+                          value={instituicaoExterna}
+                          onChange={(e) => setInstituicaoExterna(e.target.value)}
+                          placeholder="Nome da sua instituição"
+                          className="w-full rounded-md border border-input bg-surface px-3 py-2 font-body text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20"
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="campo-ra-externo" className="mb-1 block font-body text-xs font-semibold text-foreground">
+                          RA
+                        </label>
+                        <input
+                          id="campo-ra-externo"
+                          type="text"
+                          value={ra}
+                          onChange={(e) => setRa(e.target.value)}
+                          placeholder="Seu RA na instituição"
+                          className="w-full rounded-md border border-input bg-surface px-3 py-2 font-body text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20"
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* 2. Seleção de cursos */}
@@ -1026,6 +1086,8 @@ interface PagamentoUnificadoProps {
   categoriaId: CategoriaId;
   cursosSelecionados: CursoId[];
   jantarOpcao: JantarOpcaoId | null;
+  ra: string;
+  instituicaoExterna: string;
   coupon: CouponState;
   work: { titulo: string; resumo: string; categoria: string; modalidade: string; formato: string };
   files: File[];
@@ -1036,7 +1098,7 @@ interface PagamentoUnificadoProps {
 }
 
 function PagamentoUnificado({
-  dados, categoriaId, cursosSelecionados, jantarOpcao, coupon,
+  dados, categoriaId, cursosSelecionados, jantarOpcao, ra, instituicaoExterna, coupon,
   work, files, coautores, consentimentoLgpd,
   method, setMethod, onVoltar,
 }: PagamentoUnificadoProps) {
@@ -1108,6 +1170,8 @@ function PagamentoUnificado({
           cursosSelecionados,
           jantarOpcao,
           cupom: cupomAplicado,
+          ra,
+          instituicaoExterna,
         } : {}),
         ...(temTrabalho ? {
           trabalho: {

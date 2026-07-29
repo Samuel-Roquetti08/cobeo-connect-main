@@ -113,6 +113,8 @@ function InscritosPage() {
         "Telefone": r.telefone,
         "WhatsApp": r.whatsapp,
         "Categoria": r.categoria ? CATEGORIA_LABELS[r.categoria] : "—",
+        "RA": r.ra ?? "—",
+        "Instituição Externa": r.instituicaoExterna ?? "—",
         "Cursos": r.cursos.map((c) => c.curso_titulo).join(" | "),
         "Qtd. Cursos": r.cursos.length,
         "Jantar": r.jantarOpcao ? JANTAR_LABELS[r.jantarOpcao] : "—",

@@ -327,6 +327,11 @@ export interface CriarPedidoUnificadoInput extends DadosComprador {
   cursosSelecionados?: CursoId[];
   jantarOpcao?: JantarOpcaoId | null;
   cupom?: CupomAplicado | null;
+  // RA/instituição externa: apenas coletados e relacionados ao aluno, sem
+  // validação (Bloco C do PLANO_COBEO_mudancas_fabiano_29jul2026.md). Campo
+  // exibido depende da categoria — ver Inscricoes.tsx.
+  ra?: string;
+  instituicaoExterna?: string;
 
   // Trabalho — omitir para "sem trabalho".
   trabalho?: {
@@ -466,6 +471,8 @@ export async function criarPedidoUnificado(input: CriarPedidoUnificadoInput): Pr
     const { error: inscritoError } = await supabase.from("inscritos").insert({
       id: crypto.randomUUID(),
       pedido_id: pedidoId,
+      ra: input.ra?.trim() || null,
+      instituicao_externa: input.instituicaoExterna?.trim() || null,
     });
     if (inscritoError) throw inscritoError;
 

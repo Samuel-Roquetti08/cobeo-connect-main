@@ -56,6 +56,9 @@ export interface Inscrito {
   whatsapp: string;
   categoria: CategoriaParticipante | null;
   codigoInscricao: string | null;
+  // RA / instituição externa — coletados só para aluno UNIFAFIBE/externo (Bloco C)
+  ra: string | null;
+  instituicaoExterna: string | null;
   // Itens do pedido
   cursos: PedidoCurso[];
   jantarOpcao: JantarOpcao;
