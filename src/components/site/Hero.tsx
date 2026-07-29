@@ -1,6 +1,6 @@
 import { motion, type Variants } from "framer-motion";
 import { Calendar, MapPin } from "lucide-react";
-import { COBEO_ILLUSTRATION, UnifafibeLogo } from "./logos";
+import { COBEO_ILLUSTRATION } from "./logos";
 import { evento } from "@/data/event";
 
 const item: Variants = {
@@ -29,7 +29,7 @@ export function Hero() {
         }}
       />
 
-      <div className="relative z-10 mx-auto grid w-full max-w-7xl grid-cols-1 items-center gap-12 px-4 py-24 sm:px-6 md:grid-cols-[55%_45%] md:py-28 lg:py-32">
+      <div className="relative z-10 mx-auto grid w-full max-w-7xl grid-cols-1 items-center gap-12 px-4 py-24 sm:px-6 md:grid-cols-2 md:py-28 lg:py-32">
         {/* Coluna de texto */}
         <motion.div
           initial="hidden"
@@ -112,20 +112,24 @@ export function Hero() {
           </motion.p>
         </motion.div>
 
-        {/* Logo institucional desktop — Fabiano pediu bem maior, "praticamente
-            metade da área" (Bloco F1). Hero não tinha logo nenhuma antes, só a
-            ilustração arquitetônica; substituída aqui pelo mesmo slot de 45%
-            da coluna. Fonte da imagem é 1005x852px — se pixelar em telas
-            muito grandes/retina, avisar o Samuel (ele tem versão maior). */}
+        {/* Ilustração desktop — volta a ser a ilustração arquitetônica (não a
+            logo institucional, revertido a pedido do Samuel). Coluna agora é
+            50/50 (era 55/45) e a imagem ocupa a coluna inteira, sem o teto de
+            largura de antes, pra realmente tomar metade da seção do Hero. */}
         <motion.div
           initial={{ opacity: 0, scale: 0.97 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 1, delay: 0.4 }}
           className="relative hidden md:flex md:items-center md:justify-center"
         >
-          <div className="flex w-full max-w-[460px] items-center justify-center rounded-2xl bg-white/95 p-10 shadow-2xl xl:max-w-[520px]">
-            <UnifafibeLogo className="h-40 xl:h-48" />
-          </div>
+          <motion.img
+            src={COBEO_ILLUSTRATION}
+            alt="Ilustração arquitetônica do prédio da UNIFAFIBE"
+            className="w-full"
+            style={{ mixBlendMode: "luminosity", opacity: 0.82 }}
+            animate={{ y: [-8, 0, -8] }}
+            transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+          />
         </motion.div>
 
         {/* Ilustração mobile — fundo decorativo */}

@@ -730,30 +730,44 @@ export const diasEvento = [
 export type DiaId = "dia1" | "dia2" | "dia3";
 
 // ─── Patrocinadores (Bloco G) ─────────────────────────────────────────────────
-// TODO(Samuel): nenhum arquivo de logo está no repo ainda (PDFs/PNGs/JPEGs
-// enviados pelo Fabiano não chegaram no projeto). `logo: null` faz o card
-// renderizar o nome em texto dentro da moldura até os arquivos reais
-// chegarem — trocar por um import de src/assets/images/patrocinadores/
-// quando disponível (ver Patrocinadores.tsx).
+// TODO(Samuel): "Dra. Ana Luiza Cabral — Endodontia" ainda não tem arquivo de
+// logo em lugar nenhum — cai no fallback de texto até chegar.
+import dentsplySirona from "@/assets/images/patrocinadores/dentsply-sirona.png";
+import gnatus from "@/assets/images/patrocinadores/gnatus.png";
+import titaniumfix from "@/assets/images/patrocinadores/titaniumfix.jpg";
+import orais from "@/assets/images/patrocinadores/orais.jpg";
+import allianceMicroscopia from "@/assets/images/patrocinadores/alliance-microscopia.jpeg";
+import dvi from "@/assets/images/patrocinadores/dvi.jpeg";
+import novaOdontologia from "@/assets/images/patrocinadores/nova-odontologia.jpeg";
+import golgranMillennium from "@/assets/images/patrocinadores/golgran-millennium.png";
+import facciodonto from "@/assets/images/patrocinadores/facciodonto.png";
+import univyTechnology from "@/assets/images/patrocinadores/univy-technology.jpeg";
+import teLevoMobile from "@/assets/images/patrocinadores/te-levo-mobile.jpeg";
+import verveMedtech from "@/assets/images/patrocinadores/verve-medtech.jpeg";
+
 export interface Patrocinador {
   nome: string;
   logo: string | null;
+  // true para logos claros/brancos (Dentsply, Golgran-Millennium) que somem
+  // numa moldura clara — usa fundo escuro neutro em vez do padrão (Bloco G,
+  // "Opção A" do plano).
+  fundoEscuro?: boolean;
 }
 
 export const patrocinadores: Patrocinador[] = [
-  { nome: "Dentsply Sirona", logo: null },
-  { nome: "Gnatus", logo: null },
-  { nome: "Titaniumfix", logo: null },
-  { nome: "Orais", logo: null },
-  { nome: "Alliance Microscopia", logo: null },
-  { nome: "DVI", logo: null },
-  { nome: "Nova Odontologia", logo: null },
+  { nome: "Dentsply Sirona", logo: dentsplySirona, fundoEscuro: true },
+  { nome: "Gnatus", logo: gnatus },
+  { nome: "Titaniumfix", logo: titaniumfix },
+  { nome: "Orais", logo: orais },
+  { nome: "Alliance Microscopia", logo: allianceMicroscopia },
+  { nome: "DVI", logo: dvi },
+  { nome: "Nova Odontologia", logo: novaOdontologia },
   { nome: "Dra. Ana Luiza Cabral — Endodontia", logo: null },
-  { nome: "Verve Medtech", logo: null },
-  { nome: "Te Levo Mobile", logo: null },
-  { nome: "Univy Technology", logo: null },
-  { nome: "Golgran-Millennium", logo: null },
-  { nome: "Facciodonto", logo: null },
+  { nome: "Verve Medtech", logo: verveMedtech },
+  { nome: "Te Levo Mobile", logo: teLevoMobile },
+  { nome: "Univy Technology", logo: univyTechnology },
+  { nome: "Golgran-Millennium", logo: golgranMillennium, fundoEscuro: true },
+  { nome: "Facciodonto", logo: facciodonto },
 ];
 
 // precos (legado)
