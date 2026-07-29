@@ -16,6 +16,7 @@ import {
   type CupomAplicado, type EstadoInscricoes,
 } from "@/lib/api/pedidos";
 import { traduzirErro } from "@/lib/errorMessages";
+import { NormasTrabalhoAberto, normasSecoes } from "./NormasTrabalho";
 import {
   DadosForm,
   validateDados,
@@ -928,6 +929,8 @@ function FlowTrabalho({
               )}
             </div>
 
+            <NormasTrabalhoAberto />
+
             <LgpdCheckbox checked={consentimentoLgpd} onChange={setConsentimentoLgpd} />
 
             <PrimaryButton onClick={handleContinuarDados} disabled={!consentimentoLgpd}>Continuar</PrimaryButton>
@@ -1015,41 +1018,13 @@ function FlowTrabalho({
             <FileUpload files={files} onChange={setFiles} />
 
             <div className="space-y-2">
-              <Accordion title="Datas Importantes">
-                <ul className="list-disc space-y-1 pl-4 text-muted-foreground">
-                  {trabalhoConfig.normas.datasImportantes.map((item, i) => <li key={i}>{item}</li>)}
-                </ul>
-              </Accordion>
-              <Accordion title="Documentos Exigidos por Categoria">
-                <ul className="list-disc space-y-1 pl-4 text-muted-foreground">
-                  {trabalhoConfig.normas.documentosPorCategoria.map((item, i) => <li key={i}>{item}</li>)}
-                </ul>
-              </Accordion>
-              <Accordion title="Formatação do Resumo">
-                <ul className="list-disc space-y-1 pl-4 text-muted-foreground">
-                  {trabalhoConfig.normas.formatacaoResumo.map((item, i) => <li key={i}>{item}</li>)}
-                </ul>
-              </Accordion>
-              <Accordion title="Critérios de Avaliação">
-                <ul className="list-disc space-y-1 pl-4 text-muted-foreground">
-                  {trabalhoConfig.normas.avaliacao.map((item, i) => <li key={i}>{item}</li>)}
-                </ul>
-              </Accordion>
-              <Accordion title="Apresentação Oral">
-                <ul className="list-disc space-y-1 pl-4 text-muted-foreground">
-                  {trabalhoConfig.normas.apresentacaoOral.map((item, i) => <li key={i}>{item}</li>)}
-                </ul>
-              </Accordion>
-              <Accordion title="Apresentação em Painel">
-                <ul className="list-disc space-y-1 pl-4 text-muted-foreground">
-                  {trabalhoConfig.normas.apresentacaoPainel.map((item, i) => <li key={i}>{item}</li>)}
-                </ul>
-              </Accordion>
-              <Accordion title="Solicitação de Reembolso">
-                <ul className="list-disc space-y-1 pl-4 text-muted-foreground">
-                  {trabalhoConfig.normas.reembolso.map((item, i) => <li key={i}>{item}</li>)}
-                </ul>
-              </Accordion>
+              {normasSecoes().map((s) => (
+                <Accordion key={s.titulo} title={s.titulo}>
+                  <ul className="list-disc space-y-1 pl-4 text-muted-foreground">
+                    {s.itens.map((item, i) => <li key={i}>{item}</li>)}
+                  </ul>
+                </Accordion>
+              ))}
             </div>
 
             <div className="flex gap-3">
@@ -1422,17 +1397,30 @@ function PayCard({ active, onClick, icon, title, sub }: {
 }
 
 /* ── FileUpload (T5: múltiplos arquivos, acumula em vez de substituir) ──────── */
+const MAX_ARQUIVOS_TRABALHO = 5;
+
 function FileUpload({ files, onChange }: { files: File[]; onChange: (f: File[]) => void }) {
   const [over, setOver] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
   // Cada arquivo novo é validado individualmente (tamanho/extensão) antes de
-  // entrar na lista — os que já foram aceitos não são reavaliados.
+  // entrar na lista — os que já foram aceitos não são reavaliados. Limite de
+  // quantidade (Bloco E) é checado à parte, contra o total já selecionado.
   function adicionarArquivos(novos: FileList | null) {
     if (!novos || novos.length === 0) return;
+    if (files.length >= MAX_ARQUIVOS_TRABALHO) {
+      setErro(`Limite de ${MAX_ARQUIVOS_TRABALHO} arquivos por submissão atingido.`);
+      return;
+    }
+    const vagasRestantes = MAX_ARQUIVOS_TRABALHO - files.length;
     const validos: File[] = [];
     let primeiroErro: string | null = null;
+    let excedentes = 0;
     for (const f of Array.from(novos)) {
+      if (validos.length >= vagasRestantes) {
+        excedentes++;
+        continue;
+      }
       const erroArquivo = validarArquivoTrabalho(f);
       if (erroArquivo && !primeiroErro) {
         primeiroErro = `${f.name}: ${erroArquivo}`;
@@ -1440,7 +1428,11 @@ function FileUpload({ files, onChange }: { files: File[]; onChange: (f: File[]) 
         validos.push(f);
       }
     }
-    setErro(primeiroErro);
+    setErro(
+      excedentes > 0
+        ? `Limite de ${MAX_ARQUIVOS_TRABALHO} arquivos por submissão — ${excedentes} arquivo${excedentes > 1 ? "s" : ""} não foi${excedentes > 1 ? "ram" : ""} adicionado${excedentes > 1 ? "s" : ""}.`
+        : primeiroErro,
+    );
     if (validos.length > 0) onChange([...files, ...validos]);
   }
 
@@ -1461,18 +1453,29 @@ function FileUpload({ files, onChange }: { files: File[]; onChange: (f: File[]) 
       <p className="mb-1 font-body text-xs font-semibold text-foreground">
         Arquivo(s) do Trabalho<span className="ml-0.5 text-destructive" aria-hidden="true">*</span>
       </p>
-      <label
-        onDragOver={(e) => { e.preventDefault(); setOver(true); }}
-        onDragLeave={() => setOver(false)}
-        onDrop={onDrop}
-        className={`flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed px-6 py-10 text-center transition-colors ${over ? "border-primary bg-[#fff8f8]" : "border-border bg-background hover:border-primary/50"}`}
-      >
-        <Upload className="h-10 w-10 text-secondary" aria-hidden="true" />
-        <p className="font-body text-base font-medium text-foreground">Arraste seus arquivos aqui</p>
-        <p className="font-body text-sm text-primary underline">ou clique para selecionar</p>
-        <p className="font-body text-xs text-muted-foreground">PDF, DOC, DOCX, PPT ou PPTX — até 10 MB cada, pode selecionar vários</p>
-        <input type="file" multiple className="sr-only" onChange={onPick} accept=".pdf,.doc,.docx,.ppt,.pptx" aria-label="Selecionar arquivo(s) do trabalho acadêmico" />
-      </label>
+      {files.length < MAX_ARQUIVOS_TRABALHO ? (
+        <label
+          onDragOver={(e) => { e.preventDefault(); setOver(true); }}
+          onDragLeave={() => setOver(false)}
+          onDrop={onDrop}
+          className={`flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed px-6 py-10 text-center transition-colors ${over ? "border-primary bg-[#fff8f8]" : "border-border bg-background hover:border-primary/50"}`}
+        >
+          <Upload className="h-10 w-10 text-secondary" aria-hidden="true" />
+          <p className="font-body text-base font-medium text-foreground">Arraste seus arquivos aqui</p>
+          <p className="font-body text-sm text-primary underline">ou clique para selecionar</p>
+          <p className="font-body text-xs text-muted-foreground">
+            PDF, DOC, DOCX, PPT ou PPTX — até 10 MB cada, até {MAX_ARQUIVOS_TRABALHO} arquivos ({files.length}/{MAX_ARQUIVOS_TRABALHO})
+          </p>
+          <input type="file" multiple className="sr-only" onChange={onPick} accept=".pdf,.doc,.docx,.ppt,.pptx" aria-label="Selecionar arquivo(s) do trabalho acadêmico" />
+        </label>
+      ) : (
+        <div className="flex flex-col items-center gap-1 rounded-xl border-2 border-dashed border-border bg-muted/30 px-6 py-6 text-center">
+          <p className="font-body text-sm font-medium text-muted-foreground">
+            Limite de {MAX_ARQUIVOS_TRABALHO} arquivos atingido
+          </p>
+          <p className="font-body text-xs text-muted-foreground">Remova um arquivo abaixo para adicionar outro.</p>
+        </div>
+      )}
 
       {erro && (
         <p role="alert" className="mt-2 font-body text-xs font-semibold text-destructive">{erro}</p>
