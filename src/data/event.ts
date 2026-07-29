@@ -90,8 +90,8 @@ export const cursos = [
   },
   {
     id: "handson_odontologia_esporte",
-    titulo: "Hands-on: Odontologia do Esporte", // [LOREM - PALESTRANTE AINDA NÃO CONFIRMADO PELO FABIANO]
-    palestrante: null,
+    titulo: "Hands-on: Odontologia do Esporte — Protetores Bucais e Performance Esportiva",
+    palestrante: "Profa. Dra. Andrea Tolentino",
     instituicao: null,
     dia: "07/10",
     diaId: "dia1",
@@ -218,7 +218,17 @@ export const programacao = [
       { hora: "14h–16h",   titulo: "Protocolos Clínicos Inovadores para o Tratamento de HMI", speaker: "Profa. Dra. Kelly Moreira · São Leopoldo Mandic", tipo: "curso" as const },
       { hora: "16h–18h",   titulo: "Noções de Estética e Cirurgia Ortognática", speaker: "Prof. Dr. Marcelo Monnazzi · FOAR-UNESP", tipo: "curso" as const },
       { hora: "18h–19h",   titulo: "Apresentação de Trabalhos — Presencial", speaker: "", tipo: "break" as const },
-      { hora: "19h–21h",   titulo: "Hands-on (paralelos, escolha 1): Preparo Biomecânico de Alta Performance · Traumatologia Buco Maxilo Facial · Odontologia do Esporte", speaker: "Luiz F. de Freitas Oliveira · Marcelo Monnazzi · A confirmar", tipo: "curso" as const },
+      {
+        hora: "19h–21h",
+        titulo: "Hands-on (paralelos, escolha 1)",
+        speaker: "",
+        tipo: "curso" as const,
+        sessoes: [
+          { titulo: "Preparo Biomecânico de Alta Performance — Sistemas Rotatórios de NiTi Tratados Termicamente", speaker: "Luiz F. de Freitas Oliveira" },
+          { titulo: "Traumatologia Buco Maxilo Facial", speaker: "Marcelo Monnazzi" },
+          { titulo: "Odontologia do Esporte — Protetores Bucais e Performance Esportiva", speaker: "Andrea Tolentino" },
+        ],
+      },
       { hora: "21h–22h30", titulo: "Cerimonial de Abertura", speaker: "", tipo: "break" as const },
     ],
   },
@@ -227,9 +237,28 @@ export const programacao = [
     diaId: "dia2",
     itens: [
       { hora: "09h–11h",   titulo: "Apresentação de Trabalhos — Online", speaker: "", tipo: "break" as const },
-      { hora: "14h–16h",   titulo: "Impacto da Odontologia na Reabilitação de Pacientes com Fissura Labiopalatina", speaker: "Profa. Dra. Reyna Aguilar Quispe · UNORTE/FUNFARME", tipo: "curso" as const },
-      { hora: "14h–16h",   titulo: "Da UTI ao Centro de Referência: A Trajetória da Odontologia Hospitalar", speaker: "Dra. Stela Carolina V. Baldin Aguiar · FUNFARME/Hospital Austa", tipo: "curso" as const },
-      { hora: "16h–18h",   titulo: "Hands-on (paralelos, escolha 1): Gengivodesign Suture · Facetas Estratificadas · Inovações na Implantodontia · Harmonização com Preenchimento Labial", speaker: "Renan Souza · Alvaro Junqueira Jr. · Paulo Saad · Renato Assis Machado", tipo: "curso" as const },
+      {
+        hora: "14h–16h",
+        titulo: "Odontologia Hospitalar",
+        speaker: "",
+        tipo: "curso" as const,
+        sessoes: [
+          { titulo: "Impacto da Odontologia na Reabilitação de Pacientes com Fissura Labiopalatina", speaker: "Profa. Dra. Reyna Aguilar Quispe · UNORTE/FUNFARME" },
+          { titulo: "Da UTI ao Centro de Referência: A Trajetória da Odontologia Hospitalar", speaker: "Dra. Stela Carolina V. Baldin Aguiar · FUNFARME/Hospital Austa" },
+        ],
+      },
+      {
+        hora: "16h–18h",
+        titulo: "Hands-on (paralelos, escolha 1)",
+        speaker: "",
+        tipo: "curso" as const,
+        sessoes: [
+          { titulo: "Gengivodesign Suture — Introdução à Microsutura em Periodontia", speaker: "Renan Souza" },
+          { titulo: "Facetas Estratificadas sem Resina Composta com Naturalidade", speaker: "Alvaro Junqueira Jr." },
+          { titulo: "Inovações na Implantodontia", speaker: "Paulo Saad" },
+          { titulo: "Harmonização com Preenchimento Labial", speaker: "Renato Assis Machado" },
+        ],
+      },
       { hora: "18h–19h",   titulo: "Apresentação de Trabalhos — Presencial", speaker: "", tipo: "break" as const },
       { hora: "19h–21h",   titulo: "Odontologia Legal: Campos de Atuação, Mercado de Trabalho e Casuística", speaker: "Prof. Dr. Ricardo Henrique Alves da Silva · FORP-USP", tipo: "curso" as const },
       { hora: "21h–22h",   titulo: "Sorteios / Workshop Patrocinadores", speaker: "", tipo: "break" as const },
