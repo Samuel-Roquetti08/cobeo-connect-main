@@ -17,6 +17,7 @@ import {
 } from "@/lib/api/pedidos";
 import { traduzirErro } from "@/lib/errorMessages";
 import { NormasTrabalhoAberto, normasSecoes, TermoTcleLink } from "./NormasTrabalho";
+import { PoliticaPrivacidadeConteudo } from "./PoliticaPrivacidade";
 import {
   DadosForm,
   validateDados,
@@ -294,20 +295,8 @@ function PoliticaPrivacidadeModal({ onClose }: { onClose: () => void }) {
             <X className="h-5 w-5" />
           </button>
         </header>
-        <div className="flex-1 overflow-y-auto p-5 font-body text-sm text-muted-foreground space-y-3">
-          <p className="rounded-md bg-gold/10 px-3 py-2 text-[11px] text-[#8a6d1a]">
-            Rascunho técnico gerado para operação do sistema — pendente de revisão jurídica da
-            UNIFAFIBE antes do lançamento oficial.
-          </p>
-          <p><strong className="text-foreground">Dados coletados:</strong> nome, e-mail, telefone, WhatsApp e,
-            quando aplicável, o arquivo (PDF/DOC/PPT) do trabalho acadêmico submetido.</p>
-          <p><strong className="text-foreground">Finalidade:</strong> processar sua inscrição e/ou submissão de
-            trabalho, emitir crachá e certificado, e enviar comunicações sobre o evento.</p>
-          <p><strong className="text-foreground">Compartilhamento:</strong> o Mercado Pago processa o pagamento;
-            o Resend envia os e-mails de confirmação. Nenhum outro terceiro recebe seus dados.</p>
-          <p><strong className="text-foreground">Retenção:</strong> os dados são mantidos pelo período
-            necessário à realização do evento, emissão de certificados e obrigações fiscais.</p>
-          <p><strong className="text-foreground">Contato do controlador:</strong> cobeounifafibe@gmail.com.</p>
+        <div className="flex-1 overflow-y-auto p-5">
+          <PoliticaPrivacidadeConteudo />
         </div>
         <footer className="border-t border-border p-4">
           <button type="button" onClick={onClose} className="w-full rounded-md bg-primary py-2.5 font-body text-sm font-semibold text-white hover:bg-[#8B1515]">

@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as PoliticaDePrivacidadeRouteImport } from './routes/politica-de-privacidade'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as InscricaoSucessoRouteImport } from './routes/inscricao.sucesso'
@@ -27,6 +28,11 @@ import { Route as AdminCheckinJantarRouteImport } from './routes/admin.checkin-j
 import { Route as AdminCheckinRouteImport } from './routes/admin.checkin'
 import { Route as AdminCertificadosRouteImport } from './routes/admin.certificados'
 
+const PoliticaDePrivacidadeRoute = PoliticaDePrivacidadeRouteImport.update({
+  id: '/politica-de-privacidade',
+  path: '/politica-de-privacidade',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -115,6 +121,7 @@ const AdminCertificadosRoute = AdminCertificadosRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
   '/admin/certificados': typeof AdminCertificadosRoute
   '/admin/checkin': typeof AdminCheckinRoute
   '/admin/checkin-jantar': typeof AdminCheckinJantarRoute
@@ -134,6 +141,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
   '/admin/certificados': typeof AdminCertificadosRoute
   '/admin/checkin': typeof AdminCheckinRoute
   '/admin/checkin-jantar': typeof AdminCheckinJantarRoute
@@ -154,6 +162,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
   '/admin/certificados': typeof AdminCertificadosRoute
   '/admin/checkin': typeof AdminCheckinRoute
   '/admin/checkin-jantar': typeof AdminCheckinJantarRoute
@@ -175,6 +184,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/politica-de-privacidade'
     | '/admin/certificados'
     | '/admin/checkin'
     | '/admin/checkin-jantar'
@@ -194,6 +204,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/politica-de-privacidade'
     | '/admin/certificados'
     | '/admin/checkin'
     | '/admin/checkin-jantar'
@@ -213,6 +224,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/politica-de-privacidade'
     | '/admin/certificados'
     | '/admin/checkin'
     | '/admin/checkin-jantar'
@@ -233,6 +245,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  PoliticaDePrivacidadeRoute: typeof PoliticaDePrivacidadeRoute
   AdminCertificadosRoute: typeof AdminCertificadosRoute
   AdminCheckinRoute: typeof AdminCheckinRoute
   AdminCheckinJantarRoute: typeof AdminCheckinJantarRoute
@@ -253,6 +266,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/politica-de-privacidade': {
+      id: '/politica-de-privacidade'
+      path: '/politica-de-privacidade'
+      fullPath: '/politica-de-privacidade'
+      preLoaderRoute: typeof PoliticaDePrivacidadeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -377,6 +397,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  PoliticaDePrivacidadeRoute: PoliticaDePrivacidadeRoute,
   AdminCertificadosRoute: AdminCertificadosRoute,
   AdminCheckinRoute: AdminCheckinRoute,
   AdminCheckinJantarRoute: AdminCheckinJantarRoute,
