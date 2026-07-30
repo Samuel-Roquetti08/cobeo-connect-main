@@ -762,32 +762,35 @@ export const diasEvento = [
 export type DiaId = "dia1" | "dia2" | "dia3";
 
 // ─── Patrocinadores (Bloco G) ─────────────────────────────────────────────────
-// TODO(Samuel): "Dra. Ana Luiza Cabral — Endodontia" ainda não tem arquivo de
-// logo em lugar nenhum — cai no fallback de texto até chegar.
+// TODO(Samuel): "Dra. Ana Luiza Cabral" não é patrocinadora de verdade
+// (removida — ver correção do Samuel). Lista final: 12 nomes.
+//
+// Todo arquivo aqui é PNG com canal alpha real (fundo transparente, logo
+// opaco) — processado com remoção de fundo (chroma-key nos 4 cantos +
+// borda suave) a partir dos originais coloridos, porque o tratamento visual
+// escolhido (leva 3) é silhueta vinho estática via CSS `mask-image`, que só
+// funciona com um alpha channel limpo. dentsply-sirona.png já vinha assim
+// (arquivo oficial da marca); os outros 11 foram convertidos.
 import dentsplySirona from "@/assets/images/patrocinadores/dentsply-sirona.png";
 import gnatus from "@/assets/images/patrocinadores/gnatus.png";
-import titaniumfix from "@/assets/images/patrocinadores/titaniumfix.jpg";
-import orais from "@/assets/images/patrocinadores/orais.jpg";
-import allianceMicroscopia from "@/assets/images/patrocinadores/alliance-microscopia.jpeg";
-import dvi from "@/assets/images/patrocinadores/dvi.jpeg";
-import novaOdontologia from "@/assets/images/patrocinadores/nova-odontologia.jpeg";
+import titaniumfix from "@/assets/images/patrocinadores/titaniumfix.png";
+import orais from "@/assets/images/patrocinadores/orais.png";
+import allianceMicroscopia from "@/assets/images/patrocinadores/alliance-microscopia.png";
+import dvi from "@/assets/images/patrocinadores/dvi.png";
+import novaOdontologia from "@/assets/images/patrocinadores/nova-odontologia.png";
 import golgranMillennium from "@/assets/images/patrocinadores/golgran-millennium.png";
 import facciodonto from "@/assets/images/patrocinadores/facciodonto.png";
-import univyTechnology from "@/assets/images/patrocinadores/univy-technology.jpeg";
-import teLevoMobile from "@/assets/images/patrocinadores/te-levo-mobile.jpeg";
-import verveMedtech from "@/assets/images/patrocinadores/verve-medtech.jpeg";
+import univyTechnology from "@/assets/images/patrocinadores/univy-technology.png";
+import teLevoMobile from "@/assets/images/patrocinadores/te-levo-mobile.png";
+import verveMedtech from "@/assets/images/patrocinadores/verve-medtech.png";
 
 export interface Patrocinador {
   nome: string;
-  logo: string | null;
-  // true para logos claros/brancos (Dentsply, Golgran-Millennium) que somem
-  // numa moldura clara — usa fundo escuro neutro em vez do padrão (Bloco G,
-  // "Opção A" do plano).
-  fundoEscuro?: boolean;
+  logo: string;
 }
 
 export const patrocinadores: Patrocinador[] = [
-  { nome: "Dentsply Sirona", logo: dentsplySirona, fundoEscuro: true },
+  { nome: "Dentsply Sirona", logo: dentsplySirona },
   { nome: "Gnatus", logo: gnatus },
   { nome: "Titaniumfix", logo: titaniumfix },
   { nome: "Orais", logo: orais },
@@ -797,7 +800,7 @@ export const patrocinadores: Patrocinador[] = [
   { nome: "Verve Medtech", logo: verveMedtech },
   { nome: "Te Levo Mobile", logo: teLevoMobile },
   { nome: "Univy Technology", logo: univyTechnology },
-  { nome: "Golgran-Millennium", logo: golgranMillennium, fundoEscuro: true },
+  { nome: "Golgran-Millennium", logo: golgranMillennium },
   { nome: "Facciodonto", logo: facciodonto },
 ];
 
