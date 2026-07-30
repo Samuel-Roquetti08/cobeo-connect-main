@@ -16,7 +16,7 @@ import {
   type CupomAplicado, type EstadoInscricoes,
 } from "@/lib/api/pedidos";
 import { traduzirErro } from "@/lib/errorMessages";
-import { NormasTrabalhoAberto, normasSecoes } from "./NormasTrabalho";
+import { NormasTrabalhoAberto, normasSecoes, TermoTcleLink } from "./NormasTrabalho";
 import {
   DadosForm,
   validateDados,
@@ -1014,6 +1014,19 @@ function FlowTrabalho({
                 </select>
               </Field>
             </div>
+
+            {/* Destaque contextual (Bloco E3): categoria Revisão de Literatura exige
+                o termo de dispensa de TCLE — link sempre existe na seção de normas
+                abaixo, mas aqui ele aparece na hora certa, perto da decisão. */}
+            {work.categoria === "Revisão de Literatura" && (
+              <div className="flex items-start gap-2.5 rounded-lg border border-gold/50 bg-gold/10 px-3 py-2.5">
+                <Info className="h-4 w-4 shrink-0 text-gold" aria-hidden="true" />
+                <p className="font-body text-xs text-[#8a6d1a]">
+                  Revisão de Literatura exige anexar o termo de dispensa do comitê de ética.{" "}
+                  <TermoTcleLink />
+                </p>
+              </div>
+            )}
 
             <FileUpload files={files} onChange={setFiles} />
 

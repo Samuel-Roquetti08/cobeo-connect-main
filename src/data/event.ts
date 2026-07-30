@@ -92,7 +92,7 @@ export const cursos = [
     id: "handson_odontologia_esporte",
     titulo: "Hands-on: Odontologia do Esporte — Protetores Bucais e Performance Esportiva",
     palestrante: "Profa. Dra. Andrea Tolentino",
-    instituicao: null,
+    instituicao: "FOUSP-SP",
     dia: "07/10",
     diaId: "dia1",
     horario: "19h–21h",
@@ -118,7 +118,7 @@ export const cursos = [
     id: "handson_gengivodesign",
     titulo: "Hands-on: Gengivodesign Suture — Introdução à Microsutura em Periodontia",
     palestrante: "Prof. Me. Renan Souza",
-    instituicao: null,
+    instituicao: "GENGIVA DESIGN · GOLGRAN",
     dia: "08/10",
     diaId: "dia2",
     horario: "16h–18h",
@@ -144,7 +144,7 @@ export const cursos = [
     id: "handson_implantodontia",
     titulo: "Hands-on: Inovações na Implantodontia",
     palestrante: "Prof. Dr. Paulo Saad",
-    instituicao: null,
+    instituicao: "FAOA, AORP",
     dia: "08/10",
     diaId: "dia2",
     horario: "16h–18h",
@@ -182,7 +182,7 @@ export const cursos = [
   {
     id: "fluxo_digital_implantodontia",
     titulo: "Fluxo Digital na Implantodontia: Da Teoria à Prática Clínica",
-    palestrante: "Prof. Me. Kleber Campioni Dias",
+    palestrante: "Kleber Campioni Dias",
     instituicao: null,
     dia: "08/10",
     diaId: "dia2",
@@ -194,7 +194,7 @@ export const cursos = [
   },
   {
     id: "dor_nao_odontogenica",
-    titulo: "Odontologia Além dos Dentes: Quando a Dor Não É Odontogênica",
+    titulo: "Odontologia Além dos Dentes: Quando a Dor não é Odontogênica",
     palestrante: "Prof. Dr. Matheus Herreira Ferreira",
     instituicao: "FORP-USP",
     dia: "09/10",
@@ -274,15 +274,14 @@ export const programacao = [
       },
       { hora: "18h–19h",   titulo: "Apresentação de Trabalhos — Presencial", speaker: "", tipo: "break" as const },
       { hora: "19h–21h",   titulo: "Odontologia Legal: Campos de Atuação, Mercado de Trabalho e Casuística", speaker: "Prof. Dr. Ricardo Henrique Alves da Silva · FORP-USP", tipo: "curso" as const },
-      { hora: "21h–22h15", titulo: "Fluxo Digital na Implantodontia: Da Teoria à Prática Clínica", speaker: "Prof. Me. Kleber Campioni Dias", tipo: "curso" as const },
-      { hora: "21h–22h",   titulo: "Sorteios / Workshop Patrocinadores", speaker: "", tipo: "break" as const },
+      { hora: "21h–22h15", titulo: "Fluxo Digital na Implantodontia: Da Teoria à Prática Clínica", speaker: "Kleber Campioni Dias", tipo: "curso" as const },
     ],
   },
   {
     dia: "Dia 3 — 09/10",
     diaId: "dia3",
     itens: [
-      { hora: "14h–16h",   titulo: "Odontologia Além dos Dentes: Quando a Dor Não É Odontogênica", speaker: "Prof. Dr. Matheus Herreira Ferreira · FORP-USP", tipo: "curso" as const },
+      { hora: "14h–16h",   titulo: "Odontologia Além dos Dentes: Quando a Dor não é Odontogênica", speaker: "Prof. Dr. Matheus Herreira Ferreira · FORP-USP", tipo: "curso" as const },
       { hora: "16h–18h",   titulo: "Alinhadores Ortodônticos: Indicações, Limitações e Estratégias Clínicas para a Classe II", speaker: "Prof. Dr. Silvio Bellini · FOB-USP", tipo: "curso" as const },
       { hora: "18h–19h",   titulo: "Apresentação de Trabalhos — Presencial", speaker: "", tipo: "break" as const },
       { hora: "19h–21h",   titulo: "Jantar de Encerramento e Premiação dos Melhores Trabalhos", speaker: "", tipo: "break" as const },
@@ -537,7 +536,7 @@ export const palestrantes = [
     nome: "Prof. Dr. Paulo Saad",
     foto: "/palestrantes/paulo-saad.jpg",
     especialidade: "Implantodontia",
-    instituicao: "FAOA, AORPE",
+    instituicao: "FAOA, AORP",
     tag: "Implantodontia",
     objectPosition: "center 30%",
     // Reenviado legível pelo Samuel em 18/07 (o print anterior estava cortado).
@@ -624,7 +623,7 @@ export const palestrantes = [
     nome: "Profa. Dra. Andrea Tolentino",
     foto: "/palestrantes/andrea-tolentino.png",
     especialidade: "Odontologia do Esporte",
-    instituicao: null,
+    instituicao: "FOUSP-SP",
     tag: "ODONTOLOGIA DO ESPORTE",
     certificacoes: [
       "Graduação em Odontologia — UFU",
@@ -637,10 +636,12 @@ export const palestrantes = [
   },
   {
     id: "kleber-campioni-dias",
-    nome: "Prof. Me. Kleber Campioni Dias",
+    // Sem título (não é doutor) — diferente dos demais palestrantes, ver
+    // Bloco I do plano: título errado em congresso acadêmico é grave.
+    nome: "Kleber Campioni Dias",
     foto: "/palestrantes/kleber-campioni-dias.png",
     especialidade: "Implantodontia / Fluxo Digital",
-    instituicao: null,
+    instituicao: "UF-USA, MANDIC",
     tag: "FLUXO DIGITAL NA IMPLANTODONTIA",
     certificacoes: [
       "Especialista em Implantodontia",
