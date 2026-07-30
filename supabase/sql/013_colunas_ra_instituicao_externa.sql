@@ -35,15 +35,15 @@ select
   i.codigo_inscricao,
   i.presenca,
   i.primeiro_checkin_em,
-  i.ra,
-  i.instituicao_externa,
   t.id              as trabalho_id,
   t.titulo          as trabalho_titulo,
   t.categoria       as trabalho_categoria,
   t.modalidade      as trabalho_modalidade,
   t.formato         as trabalho_formato,
   t.arquivo_path,
-  c.codigo          as cupom_codigo
+  c.codigo          as cupom_codigo,
+  i.ra,
+  i.instituicao_externa
 from pedidos p
 left join inscritos i on i.pedido_id = p.id
 left join trabalhos t on t.pedido_id = p.id

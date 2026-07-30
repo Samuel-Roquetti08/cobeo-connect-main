@@ -762,7 +762,6 @@ export const patrocinadores: Patrocinador[] = [
   { nome: "Alliance Microscopia", logo: allianceMicroscopia },
   { nome: "DVI", logo: dvi },
   { nome: "Nova Odontologia", logo: novaOdontologia },
-  { nome: "Dra. Ana Luiza Cabral — Endodontia", logo: null },
   { nome: "Verve Medtech", logo: verveMedtech },
   { nome: "Te Levo Mobile", logo: teLevoMobile },
   { nome: "Univy Technology", logo: univyTechnology },
