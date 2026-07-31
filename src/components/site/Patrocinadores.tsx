@@ -3,12 +3,8 @@ import { SectionTitle } from "./SectionTitle";
 import { patrocinadores } from "@/data/event";
 import { fadeUp, stagger } from "@/lib/anim";
 
-// Bloco G, leva 3: decisão final (testada em protótipo) — silhuetas
-// monocromáticas no vinho da marca, ESTÁTICAS (sem hover colorido, sem
-// carrossel), sem moldura/caixa, flutuando direto sobre o fundo. Técnica:
-// cada logo é um PNG com canal alpha real (fundo transparente) usado como
-// CSS mask sobre um bloco `background-color: var(--primary)` — a cor da
-// silhueta fica exata e não depende da cor original do arquivo.
+// Logos originais coloridas, cada uma numa caixa de mesmo tamanho
+// (object-contain preserva a proporção de cada arquivo sem distorcer).
 export function Patrocinadores() {
   return (
     <section id="patrocinadores" className="bg-background py-16 md:py-[120px]">
@@ -27,21 +23,12 @@ export function Patrocinadores() {
             <motion.div
               key={p.nome}
               variants={fadeUp}
-              role="img"
-              aria-label={p.nome}
-              title={p.nome}
-              className="h-14 w-full max-w-[160px] bg-primary"
-              style={{
-                WebkitMaskImage: `url(${p.logo})`,
-                maskImage: `url(${p.logo})`,
-                WebkitMaskRepeat: "no-repeat",
-                maskRepeat: "no-repeat",
-                WebkitMaskPosition: "center",
-                maskPosition: "center",
-                WebkitMaskSize: "contain",
-                maskSize: "contain",
-              }}
-            />
+              className={`flex h-20 w-full max-w-[160px] items-center justify-center ${
+                p.fundoEscuro ? "rounded-lg bg-foreground px-4 py-3" : ""
+              }`}
+            >
+              <img src={p.logo} alt={p.nome} title={p.nome} className="max-h-full max-w-full object-contain" />
+            </motion.div>
           ))}
         </motion.div>
       </div>
