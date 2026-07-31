@@ -327,9 +327,9 @@ export interface CriarPedidoUnificadoInput extends DadosComprador {
   cursosSelecionados?: CursoId[];
   jantarOpcao?: JantarOpcaoId | null;
   cupom?: CupomAplicado | null;
-  // RA/instituição externa: apenas coletados e relacionados ao aluno, sem
-  // validação (Bloco C do PLANO_COBEO_mudancas_fabiano_29jul2026.md). Campo
-  // exibido depende da categoria — ver Inscricoes.tsx.
+  // RA/instituição externa: obrigatórios para aluno_unifafibe (RA) e
+  // aluno_externo (RA + instituição), a pedido do Fabiano — validados abaixo.
+  // Campo exibido depende da categoria — ver Inscricoes.tsx.
   ra?: string;
   instituicaoExterna?: string;
 
@@ -395,6 +395,13 @@ export async function criarPedidoUnificado(input: CriarPedidoUnificadoInput): Pr
     const cursoBloqueado = cursosInfo.find((c) => cursosBloqueados.includes(c.id));
     if (cursoBloqueado) {
       throw new Error(`O curso "${cursoBloqueado.titulo}" não está mais disponível para inscrição.`);
+    }
+
+    if (input.categoria === "aluno_unifafibe" && !input.ra?.trim()) {
+      throw new Error("Informe seu RA para continuar.");
+    }
+    if (input.categoria === "aluno_externo" && (!input.ra?.trim() || !input.instituicaoExterna?.trim())) {
+      throw new Error("Informe RA e instituição de ensino para continuar.");
     }
 
     valorCursos = cursosInfo.length * categoriaInfo.valorCurso;

@@ -399,7 +399,7 @@ function FlowEvento({
   }
 
   // Preço unitário do curso com base na categoria selecionada
-  const valorCurso = categorias.find((c) => c.id === categoriaId)?.valorCurso ?? 35;
+  const valorCurso = categorias.find((c) => c.id === categoriaId)?.valorCurso ?? 30;
 
   // Valor do jantar selecionado
   const valorJantar = jantarOpcao
@@ -477,6 +477,14 @@ function FlowEvento({
   function handleContinuar() {
     if (cursosSelecionados.length === 0) {
       alert("Selecione pelo menos um curso para continuar.");
+      return;
+    }
+    if (categoriaId === "aluno_unifafibe" && !ra.trim()) {
+      alert("Informe seu RA para continuar.");
+      return;
+    }
+    if (categoriaId === "aluno_externo" && (!ra.trim() || !instituicaoExterna.trim())) {
+      alert("Informe RA e instituição de ensino para continuar.");
       return;
     }
     const validated = validateDados(dados);
@@ -560,15 +568,17 @@ function FlowEvento({
                     ))}
                   </div>
 
-                  {/* RA / instituição — condicional por categoria, sem validação de formato */}
+                  {/* RA / instituição — condicional por categoria, obrigatórios (sem validação de formato) */}
                   {categoriaId === "aluno_unifafibe" && (
                     <div className="mt-3">
                       <label htmlFor="campo-ra" className="mb-1 block font-body text-xs font-semibold text-foreground">
-                        RA
+                        RA *
                       </label>
                       <input
                         id="campo-ra"
                         type="text"
+                        required
+                        aria-required="true"
                         value={ra}
                         onChange={(e) => setRa(e.target.value)}
                         placeholder="Seu RA na UNIFAFIBE"
@@ -580,11 +590,13 @@ function FlowEvento({
                     <div className="mt-3 grid gap-3 sm:grid-cols-2">
                       <div>
                         <label htmlFor="campo-instituicao-externa" className="mb-1 block font-body text-xs font-semibold text-foreground">
-                          Instituição de ensino
+                          Instituição de ensino *
                         </label>
                         <input
                           id="campo-instituicao-externa"
                           type="text"
+                          required
+                          aria-required="true"
                           value={instituicaoExterna}
                           onChange={(e) => setInstituicaoExterna(e.target.value)}
                           placeholder="Nome da sua instituição"
@@ -593,11 +605,13 @@ function FlowEvento({
                       </div>
                       <div>
                         <label htmlFor="campo-ra-externo" className="mb-1 block font-body text-xs font-semibold text-foreground">
-                          RA
+                          RA *
                         </label>
                         <input
                           id="campo-ra-externo"
                           type="text"
+                          required
+                          aria-required="true"
                           value={ra}
                           onChange={(e) => setRa(e.target.value)}
                           placeholder="Seu RA na instituição"
