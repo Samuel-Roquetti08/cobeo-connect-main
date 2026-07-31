@@ -77,7 +77,7 @@ export const cursos = [
   },
   {
     id: "handson_traumatologia",
-    titulo: "Hands-on: Traumatologia Buco Maxilo Facial",
+    titulo: "Hands-on: Trauma de Mandíbula",
     palestrante: "Prof. Dr. Marcelo Monnazzi",
     instituicao: "FOAR-UNESP",
     dia: "07/10",
@@ -104,7 +104,7 @@ export const cursos = [
   {
     id: "odontologia_hospitalar",
     titulo: "Odontologia Hospitalar: Reabilitação de Fissura Labiopalatina e Cuidado Multiprofissional",
-    palestrante: "Profa. Dra. Reyna Aguilar Quispe · Dra. Stela Carolina V. Baldin Aguiar",
+    palestrante: "Profa. Dra. Reyna Aguilar Quispe · Profa. Dra. Stela Carolina V. Baldin Aguiar",
     instituicao: "UNORTE / FUNFARME · Hospital Austa",
     dia: "08/10",
     diaId: "dia2",
@@ -131,7 +131,7 @@ export const cursos = [
     id: "handson_facetas",
     titulo: "Hands-on: Facetas Estratificadas sem Resina Composta com Naturalidade",
     palestrante: "Prof. Dr. Alvaro Augusto Junqueira Júnior",
-    instituicao: "FORP-USP",
+    instituicao: "FORP-USP, IOA, ECO ACADEMY E AORP",
     dia: "08/10",
     diaId: "dia2",
     horario: "16h–18h",
@@ -157,7 +157,7 @@ export const cursos = [
     id: "handson_harmonizacao_labial",
     titulo: "Hands-on: Harmonização com Preenchimento Labial",
     palestrante: "Prof. Dr. Renato Assis Machado",
-    instituicao: "FOP-UNICAMP",
+    instituicao: "FOP-UNICAMP, UNIFENAS, IOA, USJT, UNIGÁ, IOA",
     dia: "08/10",
     diaId: "dia2",
     horario: "16h–18h",
@@ -170,7 +170,7 @@ export const cursos = [
     id: "odontologia_legal",
     titulo: "Odontologia Legal: Campos de Atuação, Mercado de Trabalho e Casuística",
     palestrante: "Prof. Dr. Ricardo Henrique Alves da Silva",
-    instituicao: "FORP-USP",
+    instituicao: "FORP-USP, INTERPOL, IOFOS",
     dia: "08/10",
     diaId: "dia2",
     horario: "19h–21h",
@@ -182,8 +182,8 @@ export const cursos = [
   {
     id: "fluxo_digital_implantodontia",
     titulo: "Fluxo Digital na Implantodontia: Da Teoria à Prática Clínica",
-    palestrante: "Kleber Campioni Dias",
-    instituicao: null,
+    palestrante: "Prof. Me. Kleber Campioni Dias",
+    instituicao: "DENTSPLY SIRONA",
     dia: "08/10",
     diaId: "dia2",
     horario: "21h–22h15",
@@ -238,7 +238,7 @@ export const programacao = [
         tipo: "curso" as const,
         sessoes: [
           { titulo: "Preparo Biomecânico de Alta Performance — Sistemas Rotatórios de NiTi Tratados Termicamente", speaker: "Prof. Dr. Luiz Fernando de Freitas Oliveira" },
-          { titulo: "Traumatologia Buco Maxilo Facial", speaker: "Prof. Dr. Marcelo Monnazzi" },
+          { titulo: "Trauma de Mandíbula", speaker: "Prof. Dr. Marcelo Monnazzi" },
           { titulo: "Odontologia do Esporte — Protetores Bucais e Performance Esportiva", speaker: "Profa. Dra. Andrea Tolentino" },
         ],
       },
@@ -257,7 +257,7 @@ export const programacao = [
         tipo: "curso" as const,
         sessoes: [
           { titulo: "Impacto da Odontologia na Reabilitação de Pacientes com Fissura Labiopalatina", speaker: "Profa. Dra. Reyna Aguilar Quispe · UNORTE/FUNFARME" },
-          { titulo: "Da UTI ao Centro de Referência: A Trajetória da Odontologia Hospitalar", speaker: "Dra. Stela Carolina V. Baldin Aguiar · FUNFARME/Hospital Austa" },
+          { titulo: "Da UTI ao Centro de Referência: A Trajetória da Odontologia Hospitalar", speaker: "Profa. Dra. Stela Carolina V. Baldin Aguiar · FUNFARME/Hospital Austa" },
         ],
       },
       {
@@ -273,8 +273,8 @@ export const programacao = [
         ],
       },
       { hora: "18h–19h",   titulo: "Apresentação de Trabalhos — Presencial", speaker: "", tipo: "break" as const },
-      { hora: "19h–21h",   titulo: "Odontologia Legal: Campos de Atuação, Mercado de Trabalho e Casuística", speaker: "Prof. Dr. Ricardo Henrique Alves da Silva · FORP-USP", tipo: "curso" as const },
-      { hora: "21h–22h15", titulo: "Fluxo Digital na Implantodontia: Da Teoria à Prática Clínica", speaker: "Kleber Campioni Dias", tipo: "curso" as const },
+      { hora: "19h–21h",   titulo: "Odontologia Legal: Campos de Atuação, Mercado de Trabalho e Casuística", speaker: "Prof. Dr. Ricardo Henrique Alves da Silva · FORP-USP, INTERPOL, IOFOS", tipo: "curso" as const },
+      { hora: "21h–22h15", titulo: "Fluxo Digital na Implantodontia: Da Teoria à Prática Clínica", speaker: "Prof. Me. Kleber Campioni Dias · DENTSPLY SIRONA", tipo: "curso" as const },
     ],
   },
   {
@@ -521,7 +521,7 @@ export const palestrantes = [
     nome: "Prof. Dr. Alvaro Augusto Junqueira Júnior",
     foto: "/palestrantes/alvaro-junqueira.jpg",
     especialidade: "Dentística Estética",
-    instituicao: "IOA, ECO ACADEMY E AORP",
+    instituicao: "FORP-USP, IOA, ECO ACADEMY E AORP",
     tag: "DENTÍSTICA E PRÓTESE",
     certificacoes: [
       "Graduado em Odontologia pela Universidade Federal de Alfenas",
@@ -552,7 +552,7 @@ export const palestrantes = [
     nome: "Prof. Dr. Renato Assis Machado",
     foto: "/palestrantes/renato-assis-machado.jpg",
     especialidade: "Harmonização Orofacial",
-    instituicao: "UNIFENAS, IOA, USJT, UNIGÁ, IOA",
+    instituicao: "FOP-UNICAMP, UNIFENAS, IOA, USJT, UNIGÁ, IOA",
     tag: "HARMONIZAÇÃO OROFACIAL",
     certificacoes: [
       "Graduado em Odontologia pela Universidade José do Rosário Vellano (Unifenas)",
@@ -571,7 +571,7 @@ export const palestrantes = [
     nome: "Prof. Dr. Ricardo Henrique Alves da Silva",
     foto: "/palestrantes/ricardo-henrique-silva.jpg",
     especialidade: "Odontologia Legal",
-    instituicao: "INTERPOL, IOFOS",
+    instituicao: "FORP-USP, INTERPOL, IOFOS",
     tag: "ODONTOLOGIA LEGAL",
     objectPosition: "center 30%",
     // Bloco F3: cabeça cortada nas bordas + foto levemente inclinada.
@@ -636,12 +636,10 @@ export const palestrantes = [
   },
   {
     id: "kleber-campioni-dias",
-    // Sem título (não é doutor) — diferente dos demais palestrantes, ver
-    // Bloco I do plano: título errado em congresso acadêmico é grave.
-    nome: "Kleber Campioni Dias",
+    nome: "Prof. Me. Kleber Campioni Dias",
     foto: "/palestrantes/kleber-campioni-dias.png",
     especialidade: "Implantodontia / Fluxo Digital",
-    instituicao: "UF-USA, MANDIC",
+    instituicao: "DENTSPLY SIRONA",
     tag: "FLUXO DIGITAL NA IMPLANTODONTIA",
     certificacoes: [
       "Especialista em Implantodontia",
