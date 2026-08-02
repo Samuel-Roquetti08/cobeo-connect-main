@@ -12,6 +12,7 @@
 //     cursos em separado e montamos o agregado no cliente.
 
 import { supabase } from "../supabaseClient";
+import { traduzirMotivoPagamento } from "../mpStatusDetail";
 import type {
   Inscrito,
   Trabalho,
@@ -25,6 +26,7 @@ import type {
   CupomCategoria,
   ElegivelCertificado,
   ElegivelJantar,
+  MotivoPendencia,
 } from "./adminTypes";
 
 // ─── LOGS DE AUDITORIA (item 2 da auditoria pré-lançamento) ──────────────────
@@ -57,7 +59,7 @@ export async function getInscritos(): Promise<Inscrito[]> {
       id, nome, email, telefone, whatsapp, categoria,
       tem_inscricao, tem_trabalho,
       valor_cursos, valor_jantar, valor_trabalho, desconto_cupom, valor_total,
-      jantar_opcao, status, metodo_pagamento, pago_em, created_at
+      jantar_opcao, status, metodo_pagamento, pago_em, mp_reference_id, created_at
     `)
     .eq("tem_inscricao", true)
     .order("created_at", { ascending: false });
@@ -141,6 +143,7 @@ export async function getInscritos(): Promise<Inscrito[]> {
       status: p.status as StatusPagamento,
       metodoPagamento: p.metodo_pagamento ?? null,
       pagoEm: p.pago_em ?? null,
+      mpReferenceId: p.mp_reference_id ?? null,
       createdAt: p.created_at,
       presenca: ins?.presenca ?? false,
       primeiroCheckinEm: ins?.primeiro_checkin_em ?? null,
@@ -164,6 +167,39 @@ export function separarPendentes(todos: Inscrito[]): { confirmados: Inscrito[]; 
     (i.status === "pendente" ? pendentes : confirmados).push(i);
   }
   return { confirmados, pendentes };
+}
+
+// Só leitura de `webhook_logs` (o admin já tem select liberado por RLS —
+// policy admin_read_webhook) — nunca escreve nada, nunca decide status.
+// Explica pro admin por que um pedido pendente ainda não foi pago, usando o
+// último payload que o Mercado Pago mandou pro webhook.
+export async function getMotivoPendencia(mpReferenceId: string): Promise<MotivoPendencia> {
+  const { data, error } = await supabase
+    .from("webhook_logs")
+    .select("payload, created_at")
+    .eq("reference_id", mpReferenceId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+
+  if (!data) {
+    return {
+      encontrado: false,
+      statusMp: null,
+      statusDetailMp: null,
+      resumo: "Nenhuma notificação do Mercado Pago recebida para este pedido ainda — provavelmente o cliente não concluiu o checkout.",
+      ultimaNotificacaoEm: null,
+    };
+  }
+
+  const payload = data.payload as { status?: string; status_detail?: string } | null;
+  const { statusMp, statusDetailMp, resumo } = traduzirMotivoPagamento(
+    payload?.status ?? null,
+    payload?.status_detail ?? null,
+  );
+
+  return { encontrado: true, statusMp, statusDetailMp, resumo, ultimaNotificacaoEm: data.created_at };
 }
 
 // ─── TRABALHOS ───────────────────────────────────────────────────────────────

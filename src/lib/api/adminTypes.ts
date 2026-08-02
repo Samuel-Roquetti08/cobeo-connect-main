@@ -75,6 +75,7 @@ export interface Inscrito {
   status: StatusPagamento;
   metodoPagamento: string | null;
   pagoEm: string | null;
+  mpReferenceId: string | null;
   createdAt: string;
   // Presença — `presenca`/`primeiroCheckinEm` são o resumo agregado do banco
   // ("compareceu a pelo menos 1 curso"); `cursosConfirmados` é o dado real por
@@ -122,6 +123,12 @@ export const CUPOM_CATEGORIA_LABELS: Record<CupomCategoria, string> = {
   servidor_publico: "Servidor Público",
   aluno_externo: "Aluno Externo",
   publico_geral: "Público Geral",
+};
+
+export const CUPOM_STATUS_LABELS: Record<CupomStatus, string> = {
+  disponivel: "Disponível",
+  utilizado: "Utilizado",
+  expirado: "Expirado",
 };
 
 export interface Cupom {
@@ -178,4 +185,15 @@ export interface ElegivelJantar {
   jantarCheckInPor: string | null;
   jantarCheckInOverride: boolean;
   jantarCheckInMotivo: string | null;
+}
+
+// ─── Motivo de pendência de pagamento (leitura de webhook_logs) ──────────────
+// Só explica por que um pedido pendente ainda não foi pago — nunca decide
+// nem altera status. Ver getMotivoPendencia() em adminData.ts.
+export interface MotivoPendencia {
+  encontrado: boolean;
+  statusMp: string | null;
+  statusDetailMp: string | null;
+  resumo: string;
+  ultimaNotificacaoEm: string | null;
 }

@@ -5,7 +5,7 @@ import { Plus, Search, Eye, Trash2, X, Loader2, AlertCircle, RefreshCw } from "l
 import { useCupons, useCreateCupom, useDeleteCupom } from "@/lib/api/adminHooks";
 import {
   type Cupom, type CupomCategoria, type CupomStatus,
-  CUPOM_CATEGORIA_LABELS,
+  CUPOM_CATEGORIA_LABELS, CUPOM_STATUS_LABELS,
 } from "@/lib/api/adminTypes";
 import { toast } from "sonner";
 
@@ -38,12 +38,6 @@ const CAT_OPTS: (CupomCategoria | "todos")[] = [
 ];
 
 const STATUS_OPTS: (CupomStatus | "todos")[] = ["todos", "disponivel", "utilizado"];
-
-const STATUS_LABEL: Record<CupomStatus, string> = {
-  disponivel: "Disponível",
-  utilizado: "Utilizado",
-  expirado: "Expirado",
-};
 
 function CuponsPage() {
   const { data: cupons, isLoading, isError, error, refetch } = useCupons();
@@ -161,7 +155,7 @@ function CuponsPage() {
               <span className="text-[#6b6b6b]">Status:</span>
               {STATUS_OPTS.map((s) => (
                 <Chip key={s} active={statusFilter === s} onClick={() => setStatusFilter(s)}>
-                  {s === "todos" ? "Todos" : STATUS_LABEL[s]}
+                  {s === "todos" ? "Todos" : CUPOM_STATUS_LABELS[s]}
                 </Chip>
               ))}
             </div>
@@ -205,7 +199,7 @@ function CuponsPage() {
                     </td>
                     <td className="px-4 py-3">
                       <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${c.status === "disponivel" ? "bg-[#dcfce7] text-[#166534]" : "bg-[#f3f4f6] text-[#6b7280]"}`}>
-                        {STATUS_LABEL[c.status]}
+                        {CUPOM_STATUS_LABELS[c.status]}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-[12px] text-[#6b6b6b]">
@@ -441,7 +435,7 @@ function ViewModal({ cupom, onClose }: { cupom: Cupom; onClose: () => void }) {
         <KV k="Categoria" v={CUPOM_CATEGORIA_LABELS[cupom.categoria]} />
         <KV k="Tipo" v={cupom.tipo === "fixo" ? "R$ Fixo" : "Percentual"} />
         <KV k="Valor" v={cupom.tipo === "fixo" ? `R$ ${cupom.valor.toFixed(2).replace(".", ",")}` : `${cupom.valor}%`} />
-        <KV k="Status" v={STATUS_LABEL[cupom.status]} />
+        <KV k="Status" v={CUPOM_STATUS_LABELS[cupom.status]} />
         <KV k="Criado em" v={new Date(cupom.createdAt).toLocaleString("pt-BR")} />
         <KV k="Usado em" v={cupom.usadoEm ? new Date(cupom.usadoEm).toLocaleString("pt-BR") : "—"} />
       </div>

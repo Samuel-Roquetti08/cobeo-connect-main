@@ -6,12 +6,13 @@ import {
   Search, Download, Eye, ChevronDown, ChevronLeft, ChevronRight, X, Loader2,
   AlertCircle, RefreshCw,
 } from "lucide-react";
-import { useInscritos } from "@/lib/api/adminHooks";
+import { useInscritos, useMotivoPendencia } from "@/lib/api/adminHooks";
 import { normalizarBusca } from "@/lib/utils";
 import {
   type Inscrito, type StatusPagamento,
   STATUS_LABELS, CATEGORIA_LABELS, JANTAR_LABELS,
 } from "@/lib/api/adminTypes";
+import { inscritoParaLinha } from "@/lib/api/exportRows";
 import { toast } from "sonner";
 
 // Search params que o dashboard usa para abrir esta página já filtrada.
@@ -106,26 +107,7 @@ function InscritosPage() {
     try {
       // import dinâmico — só carrega o SheetJS quando o admin clica em exportar
       const XLSX = await import("xlsx");
-      const rows = filtered.map((r) => ({
-        "Código": r.codigoInscricao ?? "—",
-        "Nome": r.nome,
-        "E-mail": r.email,
-        "Telefone": r.telefone,
-        "WhatsApp": r.whatsapp,
-        "Categoria": r.categoria ? CATEGORIA_LABELS[r.categoria] : "—",
-        "RA": r.ra ?? "—",
-        "Instituição Externa": r.instituicaoExterna ?? "—",
-        "Cursos": r.cursos.map((c) => c.curso_titulo).join(" | "),
-        "Qtd. Cursos": r.cursos.length,
-        "Jantar": r.jantarOpcao ? JANTAR_LABELS[r.jantarOpcao] : "—",
-        "Cupom": r.cupomCodigo ?? "—",
-        "Desconto": r.descontoCupom,
-        "Valor Total": r.valorTotal,
-        "Status": STATUS_LABELS[r.status],
-        "Pagamento": r.metodoPagamento ?? "—",
-        "Data": new Date(r.createdAt).toLocaleString("pt-BR"),
-        "Presença (cursos)": `${r.cursosConfirmados.length}/${r.cursos.length}`,
-      }));
+      const rows = filtered.map(inscritoParaLinha);
       const ws = XLSX.utils.json_to_sheet(rows);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Inscritos");
@@ -418,6 +400,9 @@ function Insight({ label, pct, color, caption }: { label: string; pct: number; c
 }
 
 function DetailDrawer({ item, onClose }: { item: Inscrito; onClose: () => void }) {
+  const pendente = item.status === "pendente";
+  const { data: motivo, isLoading: motivoLoading } = useMotivoPendencia(pendente ? item.mpReferenceId : null);
+
   return (
     <div className="fixed inset-0 z-50">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
@@ -467,6 +452,25 @@ function DetailDrawer({ item, onClose }: { item: Inscrito; onClose: () => void }
             <KV k="Método" v={item.metodoPagamento ?? "—"} />
             <KV k="Status" v={STATUS_LABELS[item.status]} />
             <KV k="Pago em" v={item.pagoEm ? new Date(item.pagoEm).toLocaleString("pt-BR") : "—"} />
+            {pendente && (
+              <div className="mt-2 rounded-md border border-[#e8d7a0] bg-[#fdf8ec] px-3 py-2 text-[12px] text-[#8a6d1a]">
+                {!item.mpReferenceId ? (
+                  "Sem referência de pagamento (mp_reference_id) registrada — não é possível consultar o motivo."
+                ) : motivoLoading ? (
+                  "Consultando motivo da pendência..."
+                ) : (
+                  <>
+                    <span className="font-semibold">Motivo da pendência: </span>
+                    {motivo?.resumo}
+                    {motivo?.ultimaNotificacaoEm && (
+                      <span className="mt-1 block text-[11px] opacity-80">
+                        Última notificação do MP: {new Date(motivo.ultimaNotificacaoEm).toLocaleString("pt-BR")}
+                      </span>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
           </Section>
           <Section title={`Presença (${item.cursosConfirmados.length}/${item.cursos.length} cursos)`}>
             {item.cursos.length === 0

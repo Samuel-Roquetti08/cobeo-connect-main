@@ -1,7 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { useState } from "react";
-import { Users, UserCheck, FileText, Tag, Download, Check } from "lucide-react";
+import { Users, UserCheck, FileText, Tag, Download, Check, Loader2 } from "lucide-react";
+import { useInscritos, useTrabalhos, useCupons } from "@/lib/api/adminHooks";
+import { inscritoParaLinha, trabalhoParaLinha, cupomParaLinha } from "@/lib/api/exportRows";
+import type { Inscrito, Trabalho, Cupom } from "@/lib/api/adminTypes";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/admin/exportar")({
   head: () => ({ meta: [{ title: "Exportar Dados · Admin · II COBEO" }] }),
@@ -13,28 +17,100 @@ export const Route = createFileRoute("/admin/exportar")({
 });
 
 function ExportarPage() {
+  const { data: inscritos, isLoading: loadingInscritos } = useInscritos();
+  const { data: trabalhos, isLoading: loadingTrabalhos } = useTrabalhos();
+  const { data: cupons, isLoading: loadingCupons } = useCupons();
+
+  const todosInscritos = inscritos ?? [];
+  const confirmados = todosInscritos.filter((r) => r.status === "pago");
+  const todosTrabalhos = trabalhos ?? [];
+  const todosCupons = cupons ?? [];
+
   return (
     <div className="mx-auto max-w-3xl space-y-10">
       <SectionBlock title="Exportar Inscritos" description="Baixe a lista completa de inscritos no II COBEO, com filtros por status.">
         <div className="grid gap-4 sm:grid-cols-2">
-          <ExportCard icon={Users} label="Todos os Inscritos" fileName="cobeo-inscritos-completo.xlsx" />
-          <ExportCard icon={UserCheck} label="Apenas Confirmados" fileName="cobeo-inscritos-confirmados.xlsx" />
+          <ExportCard
+            icon={Users}
+            label="Todos os Inscritos"
+            fileName="cobeo-inscritos-completo.xlsx"
+            loading={loadingInscritos}
+            count={todosInscritos.length}
+            gerar={() => gerarPlanilha(todosInscritos.map(inscritoParaLinha), "Inscritos", "cobeo-inscritos-completo.xlsx")}
+          />
+          <ExportCard
+            icon={UserCheck}
+            label="Apenas Confirmados"
+            fileName="cobeo-inscritos-confirmados.xlsx"
+            loading={loadingInscritos}
+            count={confirmados.length}
+            gerar={() => gerarPlanilha(confirmados.map(inscritoParaLinha), "Confirmados", "cobeo-inscritos-confirmados.xlsx")}
+          />
         </div>
       </SectionBlock>
 
       <SectionBlock title="Exportar Trabalhos" description="Relatório completo dos trabalhos científicos submetidos.">
-        <ExportCard icon={FileText} label="Todos os Trabalhos" fileName="cobeo-trabalhos.xlsx" />
+        <ExportCard
+          icon={FileText}
+          label="Todos os Trabalhos"
+          fileName="cobeo-trabalhos.xlsx"
+          loading={loadingTrabalhos}
+          count={todosTrabalhos.length}
+          gerar={() => gerarPlanilha(todosTrabalhos.map(trabalhoParaLinha), "Trabalhos", "cobeo-trabalhos.xlsx")}
+        />
       </SectionBlock>
 
       <SectionBlock title="Exportar Cupons" description="Listagem de cupons gerados e seu status de utilização.">
-        <ExportCard icon={Tag} label="Relatório de Cupons" fileName="cobeo-cupons.xlsx" />
+        <ExportCard
+          icon={Tag}
+          label="Relatório de Cupons"
+          fileName="cobeo-cupons.xlsx"
+          loading={loadingCupons}
+          count={todosCupons.length}
+          gerar={() => gerarPlanilha(todosCupons.map(cupomParaLinha), "Cupons", "cobeo-cupons.xlsx")}
+        />
       </SectionBlock>
 
       <SectionBlock title="Exportar Completo">
-        <BigCard />
+        <BigCard
+          loading={loadingInscritos || loadingTrabalhos || loadingCupons}
+          gerar={() => gerarPlanilhaCompleta(todosInscritos, todosTrabalhos, todosCupons)}
+        />
       </SectionBlock>
     </div>
   );
+}
+
+// ─── Geração dos arquivos (SheetJS carregado sob demanda) ────────────────────
+async function gerarPlanilha(rows: Record<string, unknown>[], aba: string, fileName: string) {
+  if (rows.length === 0) {
+    toast.error("Nada para exportar", { description: "Não há registros para esse relatório." });
+    return;
+  }
+  const XLSX = await import("xlsx");
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, aba);
+  XLSX.writeFile(wb, fileName);
+}
+
+async function gerarPlanilhaCompleta(inscritos: Inscrito[], trabalhos: Trabalho[], cupons: Cupom[]) {
+  if (inscritos.length === 0 && trabalhos.length === 0 && cupons.length === 0) {
+    toast.error("Nada para exportar", { description: "Não há registros no banco ainda." });
+    return;
+  }
+  const XLSX = await import("xlsx");
+  const wb = XLSX.utils.book_new();
+  if (inscritos.length > 0) {
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(inscritos.map(inscritoParaLinha)), "Inscritos");
+  }
+  if (trabalhos.length > 0) {
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(trabalhos.map(trabalhoParaLinha)), "Trabalhos");
+  }
+  if (cupons.length > 0) {
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(cupons.map(cupomParaLinha)), "Cupons");
+  }
+  XLSX.writeFile(wb, `cobeo-completo-${new Date().toISOString().slice(0, 10)}.xlsx`);
 }
 
 function SectionBlock({ title, description, children }: { title: string; description?: string; children: React.ReactNode }) {
@@ -47,27 +123,27 @@ function SectionBlock({ title, description, children }: { title: string; descrip
   );
 }
 
-type State = "idle" | "downloading" | "done";
+type State = "idle" | "gerando" | "done";
 
-function ExportCard({ icon: Icon, label, fileName }: { icon: typeof Users; label: string; fileName: string }) {
+function ExportCard({
+  icon: Icon, label, fileName, loading, count, gerar,
+}: {
+  icon: typeof Users; label: string; fileName: string; loading: boolean; count: number; gerar: () => Promise<void>;
+}) {
   const [state, setState] = useState<State>("idle");
-  const [progress, setProgress] = useState(0);
 
-  function trigger() {
-    if (state !== "idle") return;
-    setState("downloading");
-    setProgress(0);
-    const id = setInterval(() => {
-      setProgress((p) => {
-        if (p >= 100) {
-          clearInterval(id);
-          setState("done");
-          setTimeout(() => { setState("idle"); setProgress(0); }, 2500);
-          return 100;
-        }
-        return p + 8;
-      });
-    }, 80);
+  async function trigger() {
+    if (state !== "idle" || loading) return;
+    setState("gerando");
+    try {
+      await gerar();
+      setState("done");
+      setTimeout(() => setState("idle"), 2500);
+    } catch (e) {
+      console.error("[exportar]", e);
+      toast.error("Erro ao gerar planilha", { description: (e as Error)?.message ?? "Tente novamente." });
+      setState("idle");
+    }
   }
 
   return (
@@ -78,45 +154,42 @@ function ExportCard({ icon: Icon, label, fileName }: { icon: typeof Users; label
         </div>
         <div className="flex-1">
           <div className="text-[14px] font-semibold text-[#1a1a1a]">{label}</div>
-          <div className="mt-0.5 text-[11px] text-[#6b6b6b]">{fileName}</div>
+          <div className="mt-0.5 text-[11px] text-[#6b6b6b]">
+            {fileName} {!loading && <span>· {count} registro{count !== 1 ? "s" : ""}</span>}
+          </div>
         </div>
       </div>
-      {state === "downloading" && (
-        <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-[#f3f0ee]">
-          <div className="h-full bg-[#731111] transition-[width] duration-100" style={{ width: `${progress}%` }} />
-        </div>
-      )}
       <button
         onClick={trigger}
-        disabled={state !== "idle"}
+        disabled={state !== "idle" || loading}
         className="mt-4 flex w-full items-center justify-center gap-2 rounded-md bg-[#731111] px-4 py-2 text-sm font-medium text-white hover:bg-[#8a1515] disabled:opacity-70"
       >
         {state === "done" ? <><Check className="h-4 w-4" /> Download iniciado</>
-          : state === "downloading" ? <>Gerando...</>
+          : state === "gerando" ? <><Loader2 className="h-4 w-4 animate-spin" /> Gerando...</>
+          : loading ? <><Loader2 className="h-4 w-4 animate-spin" /> Carregando dados...</>
           : <><Download className="h-4 w-4" /> Exportar .xlsx</>}
       </button>
     </div>
   );
 }
 
-function BigCard() {
+function BigCard({ loading, gerar }: { loading: boolean; gerar: () => Promise<void> }) {
   const [state, setState] = useState<State>("idle");
-  const [progress, setProgress] = useState(0);
-  function trigger() {
-    if (state !== "idle") return;
-    setState("downloading");
-    setProgress(0);
-    const id = setInterval(() => {
-      setProgress((p) => {
-        if (p >= 100) {
-          clearInterval(id); setState("done");
-          setTimeout(() => { setState("idle"); setProgress(0); }, 2500);
-          return 100;
-        }
-        return p + 6;
-      });
-    }, 80);
+
+  async function trigger() {
+    if (state !== "idle" || loading) return;
+    setState("gerando");
+    try {
+      await gerar();
+      setState("done");
+      setTimeout(() => setState("idle"), 2500);
+    } catch (e) {
+      console.error("[exportar-completo]", e);
+      toast.error("Erro ao gerar planilha", { description: (e as Error)?.message ?? "Tente novamente." });
+      setState("idle");
+    }
   }
+
   return (
     <div className="rounded-xl bg-[#731111] p-7 text-white">
       <div className="flex flex-wrap items-center justify-between gap-4">
@@ -128,19 +201,15 @@ function BigCard() {
         </div>
         <button
           onClick={trigger}
-          disabled={state !== "idle"}
+          disabled={state !== "idle" || loading}
           className="flex items-center gap-2 rounded-md bg-white px-5 py-2.5 text-sm font-semibold text-[#731111] hover:bg-white/90 disabled:opacity-80"
         >
           {state === "done" ? <><Check className="h-4 w-4" /> Download iniciado</>
-            : state === "downloading" ? "Gerando..."
+            : state === "gerando" ? <><Loader2 className="h-4 w-4 animate-spin" /> Gerando...</>
+            : loading ? <><Loader2 className="h-4 w-4 animate-spin" /> Carregando...</>
             : <><Download className="h-4 w-4" /> Exportar Completo</>}
         </button>
       </div>
-      {state === "downloading" && (
-        <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-white/20">
-          <div className="h-full bg-[#C9A84C] transition-[width] duration-100" style={{ width: `${progress}%` }} />
-        </div>
-      )}
     </div>
   );
 }

@@ -10,6 +10,7 @@ import {
   getInscritos, getTrabalhos, getCupons, createCupom, deleteCupom,
   getConfiguracoes, updateConfiguracoes,
   getElegiveisCertificado, marcarCertificadosEnviados,
+  getMotivoPendencia,
 } from "./adminData";
 import type { CupomCategoria } from "./adminTypes";
 
@@ -24,6 +25,17 @@ export const adminKeys = {
 
 export function useInscritos() {
   return useQuery({ queryKey: adminKeys.inscritos, queryFn: getInscritos });
+}
+
+// Lazy: só busca quando o admin abre o detalhe de um pedido pendente (não
+// entra no carregamento em massa da listagem). `enabled: false` quando não
+// há mpReferenceId evita rodar a query com filtro vazio.
+export function useMotivoPendencia(mpReferenceId: string | null) {
+  return useQuery({
+    queryKey: ["admin", "motivoPendencia", mpReferenceId],
+    queryFn: () => getMotivoPendencia(mpReferenceId!),
+    enabled: !!mpReferenceId,
+  });
 }
 
 export function useTrabalhos() {
