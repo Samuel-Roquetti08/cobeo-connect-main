@@ -2,19 +2,10 @@ import { contato } from "@/data/event";
 
 // Bloco K do plano — fonte única do texto da Política de Privacidade,
 // usada tanto no modal (checkbox de consentimento na inscrição) quanto na
-// página /politica-de-privacidade (link do rodapé). Ressalva registrada no
-// próprio plano: texto é uma base sólida para operação do sistema, mas a
-// validação jurídica final é responsabilidade da Comissão Organizadora /
-// UNIFAFIBE — o site não "resolve" conformidade sozinho.
+// página /politica-de-privacidade (link do rodapé).
 export function PoliticaPrivacidadeConteudo() {
   return (
     <div className="space-y-4 font-body text-sm text-muted-foreground">
-      <p className="rounded-md bg-gold/10 px-3 py-2 text-[11px] text-[#8a6d1a]">
-        Rascunho técnico gerado para operação do sistema, em conformidade com a Lei nº
-        13.709/2018 (Lei Geral de Proteção de Dados Pessoais — LGPD) — pendente de revisão
-        jurídica final da Comissão Organizadora / UNIFAFIBE antes do lançamento oficial.
-      </p>
-
       <div>
         <h4 className="font-display text-sm font-bold text-foreground">Dados coletados</h4>
         <p className="mt-1">
