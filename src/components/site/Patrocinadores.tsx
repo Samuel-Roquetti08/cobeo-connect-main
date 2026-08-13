@@ -17,13 +17,13 @@ export function Patrocinadores() {
           whileInView="visible"
           viewport={{ once: true, amount: 0.15 }}
           className="mt-14 grid items-center justify-items-center gap-x-10 gap-y-12"
-          style={{ gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))" }}
+          style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}
         >
           {patrocinadores.map((p) => (
             <motion.div
               key={p.nome}
               variants={fadeUp}
-              className={`flex h-20 w-full max-w-[160px] items-center justify-center ${
+              className={`flex h-28 w-full max-w-[220px] items-center justify-center ${
                 p.fundoEscuro ? "rounded-lg bg-foreground px-4 py-3" : ""
               }`}
             >
