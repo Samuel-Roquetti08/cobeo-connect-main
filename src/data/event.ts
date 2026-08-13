@@ -760,8 +760,8 @@ export const diasEvento = [
 export type DiaId = "dia1" | "dia2" | "dia3";
 
 // ─── Patrocinadores (Bloco G) ─────────────────────────────────────────────────
-// TODO(Samuel): "Dra. Ana Luiza Cabral" não é patrocinadora de verdade
-// (removida — ver correção do Samuel). Lista final: 12 nomes.
+// "Dra. Ana Luiza Cabral" tinha sido removida por não ser patrocinadora de
+// verdade (ver TODO antigo) — voltou à lista a pedido do Samuel, agora é.
 //
 // Logos originais coloridas, com fundo removido (flood-fill a partir das
 // bordas + borda suave, script descartado após uso — não faz parte do
@@ -779,6 +779,12 @@ import facciodonto from "@/assets/images/patrocinadores/facciodonto.png";
 import univyTechnology from "@/assets/images/patrocinadores/univy-technology.png";
 import teLevoMobile from "@/assets/images/patrocinadores/te-levo-mobile.png";
 import verveMedtech from "@/assets/images/patrocinadores/verve-medtech.png";
+import bbInvent from "@/assets/images/patrocinadores/6b-invent-germany.png";
+import vbDoBrasil from "@/assets/images/patrocinadores/vb-do-brasil.png";
+import gestos from "@/assets/images/patrocinadores/gestos.png";
+import anaLuizaCabral from "@/assets/images/patrocinadores/ana-luiza-cabral.png";
+import dentalUniShop from "@/assets/images/patrocinadores/dental-uni-shop.png";
+import apcdBebedouro from "@/assets/images/patrocinadores/apcd-bebedouro.png";
 
 export interface Patrocinador {
   nome: string;
@@ -802,6 +808,12 @@ export const patrocinadores: Patrocinador[] = [
   { nome: "Univy Technology", logo: univyTechnology },
   { nome: "Golgran-Millennium", logo: golgranMillennium },
   { nome: "Facciodonto", logo: facciodonto },
+  { nome: "6b Invent Germany", logo: bbInvent },
+  { nome: "V&B do Brasil", logo: vbDoBrasil },
+  { nome: "Gestos", logo: gestos },
+  { nome: "Dra. Ana Luiza Cabral", logo: anaLuizaCabral },
+  { nome: "Dental Uni Shop", logo: dentalUniShop },
+  { nome: "APCD Regional de Bebedouro", logo: apcdBebedouro },
 ];
 
 // precos (legado)
