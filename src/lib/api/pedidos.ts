@@ -1,13 +1,36 @@
 // ============================================================================
 // COBEO CONNECT — Site público: criação de pedidos (cursos + trabalho)
 // ============================================================================
-// IDs são gerados no cliente (crypto.randomUUID()) para não depender de
-// RETURNING no insert — isso evitaria precisar de uma policy de SELECT pública
-// em `pedidos`, que vazaria dados de outros pedidos. `valor_total` é sempre
+// IDs são gerados no cliente (gerarUUID()) para não depender de RETURNING no
+// insert — isso evitaria precisar de uma policy de SELECT pública em
+// `pedidos`, que vazaria dados de outros pedidos. `valor_total` é sempre
 // calculado pelo banco (GENERATED ALWAYS AS); nunca é enviado daqui.
 
 import { supabase } from "@/lib/supabaseClient";
 import { categorias, cursos, jantar, trabalho, type CategoriaId, type CursoId, type JantarOpcaoId } from "@/data/event";
+
+// crypto.randomUUID() não existe em WebViews sociais mais antigos (ex.: iOS
+// in-app browser do Instagram), o que quebrava o checkout inteiro nesse
+// ambiente. Fallback progressivo: getRandomValues (também criptográfico,
+// suporte bem mais amplo) e, em último caso, Math.random — aceitável aqui
+// porque o UUID é só chave primária interna (nunca exposta via SELECT
+// público), não segredo nem chave de idempotência.
+function gerarUUID(): string {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  if (typeof crypto !== "undefined" && crypto.getRandomValues) {
+    const bytes = crypto.getRandomValues(new Uint8Array(16));
+    bytes[6] = (bytes[6] & 0x0f) | 0x40; // versão 4
+    bytes[8] = (bytes[8] & 0x3f) | 0x80; // variante RFC 4122
+    const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+  }
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
+  });
+}
 
 export type MetodoPagamento = "pix" | "debito" | "credito";
 
@@ -159,7 +182,7 @@ export async function criarPedidoEvento(input: CriarPedidoEventoInput): Promise<
 
   const descontoCupom = calcularDescontoCupom(input.cupom, valorCursos);
 
-  const pedidoId = crypto.randomUUID();
+  const pedidoId = gerarUUID();
   const mpReferenceId = `COBEO-EVT-${pedidoId.slice(0, 8).toUpperCase()}`;
 
   const { error: pedidoError } = await supabase.from("pedidos").insert({
@@ -187,7 +210,7 @@ export async function criarPedidoEvento(input: CriarPedidoEventoInput): Promise<
   if (pedidoError) throw pedidoError;
 
   const { error: inscritoError } = await supabase.from("inscritos").insert({
-    id: crypto.randomUUID(),
+    id: gerarUUID(),
     pedido_id: pedidoId,
   });
   if (inscritoError) throw inscritoError;
@@ -243,7 +266,7 @@ export async function criarPedidoTrabalho(input: CriarPedidoTrabalhoInput): Prom
     if (erroArquivo) throw new Error(`${arquivo.name}: ${erroArquivo}`);
   }
 
-  const pedidoId = crypto.randomUUID();
+  const pedidoId = gerarUUID();
   const mpReferenceId = `COBEO-TRB-${pedidoId.slice(0, 8).toUpperCase()}`;
 
   // Upload primeiro: se algum falhar, nenhum pedido é criado (nenhum lixo no
@@ -253,7 +276,7 @@ export async function criarPedidoTrabalho(input: CriarPedidoTrabalhoInput): Prom
   const arquivosParaGravar: { path: string; nome: string; tipo: string }[] = [];
   for (const arquivo of input.arquivos) {
     const ext = arquivo.name.slice(arquivo.name.lastIndexOf(".")).toLowerCase();
-    const arquivoPath = `${pedidoId}/${crypto.randomUUID()}${ext}`;
+    const arquivoPath = `${pedidoId}/${gerarUUID()}${ext}`;
     const { error: uploadError } = await supabase.storage
       .from("trabalhos-pdfs")
       .upload(arquivoPath, arquivo, { contentType: arquivo.type, upsert: false });
@@ -280,7 +303,7 @@ export async function criarPedidoTrabalho(input: CriarPedidoTrabalhoInput): Prom
   });
   if (pedidoError) throw pedidoError;
 
-  const trabalhoId = crypto.randomUUID();
+  const trabalhoId = gerarUUID();
   const { error: trabalhoError } = await supabase.from("trabalhos").insert({
     id: trabalhoId,
     pedido_id: pedidoId,
@@ -432,7 +455,7 @@ export async function criarPedidoUnificado(input: CriarPedidoUnificadoInput): Pr
   const valorBaseCupom = valorCursos + valorJantar + valorTrabalho;
   const descontoCupom = calcularDescontoCupomTotal(input.cupom ?? null, valorBaseCupom);
 
-  const pedidoId = crypto.randomUUID();
+  const pedidoId = gerarUUID();
   const prefixo = temInscricao && temTrabalho ? "CMB" : temTrabalho ? "TRB" : "EVT";
   const mpReferenceId = `COBEO-${prefixo}-${pedidoId.slice(0, 8).toUpperCase()}`;
 
@@ -442,7 +465,7 @@ export async function criarPedidoUnificado(input: CriarPedidoUnificadoInput): Pr
   if (temTrabalho) {
     for (const arquivo of input.trabalho!.arquivos) {
       const ext = arquivo.name.slice(arquivo.name.lastIndexOf(".")).toLowerCase();
-      const arquivoPath = `${pedidoId}/${crypto.randomUUID()}${ext}`;
+      const arquivoPath = `${pedidoId}/${gerarUUID()}${ext}`;
       const { error: uploadError } = await supabase.storage
         .from("trabalhos-pdfs")
         .upload(arquivoPath, arquivo, { contentType: arquivo.type, upsert: false });
@@ -476,7 +499,7 @@ export async function criarPedidoUnificado(input: CriarPedidoUnificadoInput): Pr
 
   if (temInscricao) {
     const { error: inscritoError } = await supabase.from("inscritos").insert({
-      id: crypto.randomUUID(),
+      id: gerarUUID(),
       pedido_id: pedidoId,
       ra: input.ra?.trim() || null,
       instituicao_externa: input.instituicaoExterna?.trim() || null,
@@ -495,7 +518,7 @@ export async function criarPedidoUnificado(input: CriarPedidoUnificadoInput): Pr
 
   if (temTrabalho) {
     const t = input.trabalho!;
-    const trabalhoId = crypto.randomUUID();
+    const trabalhoId = gerarUUID();
     const { error: trabalhoError } = await supabase.from("trabalhos").insert({
       id: trabalhoId,
       pedido_id: pedidoId,
