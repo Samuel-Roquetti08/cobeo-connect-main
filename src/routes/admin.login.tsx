@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState, type FormEvent } from "react";
-import { Lock, Mail } from "lucide-react";
+import { Eye, EyeOff, Lock, Mail } from "lucide-react";
 import { useAdminAuth } from "@/lib/adminAuth";
 
 export const Route = createFileRoute("/admin/login")({
@@ -15,6 +15,7 @@ function AdminLogin() {
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState<"login" | "esqueci">("login");
   const [resetEnviado, setResetEnviado] = useState(false);
+  const [mostrarSenha, setMostrarSenha] = useState(false);
 
   useEffect(() => {
     if (ready && user) navigate({ to: "/admin/dashboard" });
@@ -136,12 +137,25 @@ function AdminLogin() {
                   <input
                     id="login-pass"
                     name="pass"
-                    type="password"
+                    type={mostrarSenha ? "text" : "password"}
                     required
                     autoComplete="current-password"
                     placeholder="••••••••"
                     className="w-full rounded-md border border-white/10 bg-white/5 px-9 py-2.5 text-sm text-white placeholder-white/30 outline-none transition-colors focus:border-[#C9A84C] focus:ring-1 focus:ring-[#C9A84C]"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setMostrarSenha((v) => !v)}
+                    aria-label={mostrarSenha ? "Ocultar senha" : "Mostrar senha"}
+                    aria-pressed={mostrarSenha}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-black transition-colors hover:text-black/70"
+                  >
+                    {mostrarSenha ? (
+                      <EyeOff className="h-4 w-4" aria-hidden="true" />
+                    ) : (
+                      <Eye className="h-4 w-4" aria-hidden="true" />
+                    )}
+                  </button>
                 </div>
               </div>
             </div>

@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
-import { Lock } from "lucide-react";
+import { Eye, EyeOff, Lock } from "lucide-react";
 import { useAdminAuth } from "@/lib/adminAuth";
 
 export const Route = createFileRoute("/admin/redefinir-senha")({
@@ -19,6 +19,7 @@ function RedefinirSenha() {
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(false);
   const [sucesso, setSucesso] = useState(false);
+  const [mostrarSenha, setMostrarSenha] = useState(false);
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -84,7 +85,7 @@ function RedefinirSenha() {
                   <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/30" aria-hidden="true" />
                   <input
                     id="nova-senha"
-                    type="password"
+                    type={mostrarSenha ? "text" : "password"}
                     required
                     minLength={6}
                     autoComplete="new-password"
@@ -93,6 +94,19 @@ function RedefinirSenha() {
                     placeholder="••••••••"
                     className="w-full rounded-md border border-white/10 bg-white/5 px-9 py-2.5 text-sm text-white placeholder-white/30 outline-none transition-colors focus:border-[#C9A84C] focus:ring-1 focus:ring-[#C9A84C]"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setMostrarSenha((v) => !v)}
+                    aria-label={mostrarSenha ? "Ocultar senha" : "Mostrar senha"}
+                    aria-pressed={mostrarSenha}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-black transition-colors hover:text-black/70"
+                  >
+                    {mostrarSenha ? (
+                      <EyeOff className="h-4 w-4" aria-hidden="true" />
+                    ) : (
+                      <Eye className="h-4 w-4" aria-hidden="true" />
+                    )}
+                  </button>
                 </div>
               </div>
 
@@ -104,7 +118,7 @@ function RedefinirSenha() {
                   <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/30" aria-hidden="true" />
                   <input
                     id="confirmar-senha"
-                    type="password"
+                    type={mostrarSenha ? "text" : "password"}
                     required
                     minLength={6}
                     autoComplete="new-password"
@@ -113,6 +127,19 @@ function RedefinirSenha() {
                     placeholder="••••••••"
                     className="w-full rounded-md border border-white/10 bg-white/5 px-9 py-2.5 text-sm text-white placeholder-white/30 outline-none transition-colors focus:border-[#C9A84C] focus:ring-1 focus:ring-[#C9A84C]"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setMostrarSenha((v) => !v)}
+                    aria-label={mostrarSenha ? "Ocultar senha" : "Mostrar senha"}
+                    aria-pressed={mostrarSenha}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-black transition-colors hover:text-black/70"
+                  >
+                    {mostrarSenha ? (
+                      <EyeOff className="h-4 w-4" aria-hidden="true" />
+                    ) : (
+                      <Eye className="h-4 w-4" aria-hidden="true" />
+                    )}
+                  </button>
                 </div>
               </div>
 
