@@ -357,7 +357,6 @@ export const trabalho = {
       "A omissão desses documentos implica na desclassificação do trabalho.",
     ],
     formatacaoResumo: [
-      "Template disponível no site do congresso — o resumo deve ser preenchido nele e salvo em PDF.",
       "Título: em português, negrito, máximo de 120 caracteres, refletindo o objetivo do estudo. Apenas a primeira letra maiúscula.",
       "Autores: nomes completos separados por vírgula, com o último sobrenome em maiúsculas. O primeiro autor deve ser o apresentador. Máximo de 8 autores (12 para Extensão Universitária).",
       "Afiliação: instituição do autor apresentador (nome completo, sigla, cidade, estado e país) + e-mail do apresentador (o mesmo cadastrado na inscrição).",
