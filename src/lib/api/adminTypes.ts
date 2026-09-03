@@ -163,6 +163,16 @@ export interface ElegivelCertificado {
   totalCursos: number;
   cursosPresentes: number;
   elegivel: boolean;
+  // Timestamp do envio do certificado deste participante (null = ainda não
+  // recebeu). Alimenta o envio idempotente/retomável.
+  certificadoEnviadoEm: string | null;
+}
+
+// Resultado de um lote de envio da Edge Function enviar-certificados.
+export interface ResultadoEnvioCertificados {
+  enviados: number;
+  falhas: number;
+  restantes: number;
 }
 
 // ─── Elegibilidade do jantar de encerramento (T5) ─────────────────────────────

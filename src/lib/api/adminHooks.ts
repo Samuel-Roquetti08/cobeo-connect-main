@@ -9,7 +9,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   getInscritos, getTrabalhos, getCupons, createCupom, deleteCupom,
   getConfiguracoes, updateConfiguracoes,
-  getElegiveisCertificado, marcarCertificadosEnviados,
+  getElegiveisCertificado, enviarCertificados,
   getMotivoPendencia,
 } from "./adminData";
 import type { CupomCategoria } from "./adminTypes";
@@ -83,11 +83,17 @@ export function useElegiveisCertificado() {
   return useQuery({ queryKey: adminKeys.certificados, queryFn: getElegiveisCertificado });
 }
 
-export function useMarcarCertificadosEnviados() {
+// Envia um lote de certificados via Edge Function. A tela reinvoca até
+// `restantes` zerar; a cada lote invalida a lista (para atualizar quem já
+// recebeu) e as configs (para o carimbo global).
+export function useEnviarCertificados() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: () => marcarCertificadosEnviados(),
-    onSuccess: () => qc.invalidateQueries({ queryKey: adminKeys.config }),
+    mutationFn: (limite?: number) => enviarCertificados(limite),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: adminKeys.certificados });
+      qc.invalidateQueries({ queryKey: adminKeys.config });
+    },
   });
 }
 

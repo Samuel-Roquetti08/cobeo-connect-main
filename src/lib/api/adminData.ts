@@ -25,6 +25,7 @@ import type {
   JantarOpcao,
   CupomCategoria,
   ElegivelCertificado,
+  ResultadoEnvioCertificados,
   ElegivelJantar,
   MotivoPendencia,
 } from "./adminTypes";
@@ -386,7 +387,7 @@ export async function updateConfiguracoes(
 export async function getElegiveisCertificado(): Promise<ElegivelCertificado[]> {
   const { data, error } = await supabase
     .from("vw_elegiveis_certificado")
-    .select("inscrito_id, codigo_inscricao, pedido_id, nome, email, total_cursos, cursos_presentes, elegivel");
+    .select("inscrito_id, codigo_inscricao, pedido_id, nome, email, total_cursos, cursos_presentes, elegivel, certificado_enviado_em");
   if (error) throw error;
   return (data ?? []).map((r) => ({
     inscritoId: r.inscrito_id,
@@ -397,19 +398,46 @@ export async function getElegiveisCertificado(): Promise<ElegivelCertificado[]> 
     totalCursos: r.total_cursos,
     cursosPresentes: r.cursos_presentes,
     elegivel: r.elegivel,
+    certificadoEnviadoEm: r.certificado_enviado_em ?? null,
   }));
 }
 
-// Ação em massa e irreversível: grava o timestamp de envio (usado pela UI para
-// desabilitar o botão e evitar reenvio/duplicação de e-mails).
-export async function marcarCertificadosEnviados(): Promise<void> {
-  const enviadosEm = new Date().toISOString();
-  const { error } = await supabase
-    .from("configuracoes_evento")
-    .update({ certificados_enviados_em: enviadosEm })
-    .eq("id", 1);
-  if (error) throw error;
-  await registrarLog("emitir_certificados", "certificados", null, { certificados_enviados_em: enviadosEm });
+// Erro de negócio que a UI trata de forma específica: a Edge Function recusou o
+// envio porque a carga horária dos cursos ainda é pendência do Fabiano.
+export class CargaHorariaPendenteError extends Error {
+  constructor(mensagem: string) {
+    super(mensagem);
+    this.name = "CargaHorariaPendenteError";
+  }
+}
+
+// Envia (de verdade) os certificados de um lote de elegíveis que ainda não
+// receberam: a Edge Function gera o PDF e dispara o e-mail via Resend, marcando
+// cada inscrito. Idempotente/retomável — a UI reinvoca até `restantes` zerar. O
+// carimbo global certificados_enviados_em é gravado pela function ao zerar a fila.
+export async function enviarCertificados(limite?: number): Promise<ResultadoEnvioCertificados> {
+  const { data, error } = await supabase.functions.invoke("enviar-certificados", {
+    body: limite ? { limite } : {},
+  });
+  if (error) {
+    // functions.invoke embrulha erros HTTP num FunctionsHttpError cujo corpo (com
+    // o 422 de carga horária pendente) está em error.context. Tenta extrair.
+    const ctx = (error as { context?: Response }).context;
+    if (ctx && typeof ctx.json === "function") {
+      try {
+        const corpo = await ctx.json();
+        if (corpo?.error === "carga_horaria_pendente") {
+          throw new CargaHorariaPendenteError(corpo.mensagem ?? "Carga horária pendente.");
+        }
+        if (corpo?.error) throw new Error(corpo.mensagem ?? corpo.error);
+      } catch (e) {
+        if (e instanceof CargaHorariaPendenteError || e instanceof Error) throw e;
+      }
+    }
+    throw error;
+  }
+  await registrarLog("emitir_certificados", "certificados", null, data);
+  return data as ResultadoEnvioCertificados;
 }
 
 // ─── CHECK-IN ────────────────────────────────────────────────────────────────

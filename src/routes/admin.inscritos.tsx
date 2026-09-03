@@ -423,6 +423,11 @@ function DetailDrawer({ item, onClose }: { item: Inscrito; onClose: () => void }
             <KV k="Telefone" v={item.telefone} />
             <KV k="WhatsApp" v={item.whatsapp} />
             <KV k="Categoria" v={item.categoria ? CATEGORIA_LABELS[item.categoria] : "—"} />
+            {/* RA / instituição externa: coletados só para aluno UNIFAFIBE/externo
+                (Bloco C) — só aparecem quando existem, para não poluir a ficha de
+                quem é profissional. */}
+            {item.ra && <KV k="RA" v={item.ra} />}
+            {item.instituicaoExterna && <KV k="Instituição externa" v={item.instituicaoExterna} />}
             <KV k="Código" v={item.codigoInscricao ?? "—"} />
           </Section>
           <Section title={`Cursos (${item.cursos.length})`}>
