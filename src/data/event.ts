@@ -341,8 +341,8 @@ export const trabalho = {
   ],
   normas: {
     datasImportantes: [
-      "Período de submissões: 20/07/2026 a 06/09/2026",
-      "Divulgação dos trabalhos aprovados: 07/09/2026",
+      "Período de submissões: 20/07/2026 a 30/09/2026",
+      "Divulgação dos trabalhos aprovados: 02/10/2026",
       "Apresentação de trabalhos presenciais: 07 a 09/10/2026 (18h às 19h)",
       "Apresentação de trabalhos on-line (síncrona): 08/10/2026 (9h às 11h)",
       "Premiações (menções honrosas): 09/10/2026 (noite)",
@@ -385,7 +385,7 @@ export const trabalho = {
     ],
     reembolso: [
       "Solicitações via e-mail: cobeounifafibe@gmail.com.",
-      "Reembolso de 50% até 10/09/2026. Após essa data, não há reembolso.",
+      "Reembolso de 50% até 30/09/2026. Após essa data, não há reembolso.",
       "Trabalhos não apresentados são desclassificados, não geram certificado e não são publicados nos anais — sem reembolso.",
     ],
   },
@@ -667,8 +667,8 @@ export const contato = {
 export const politicaReembolso = {
   email: "cobeounifafibe@gmail.com",
   regras: [
-    { prazo: "Até 10 de setembro de 2026", percentual: 50, descricao: "Reembolso de 50% do valor pago." },
-    { prazo: "Após 10 de setembro de 2026", percentual: 0, descricao: "Não haverá reembolso após esta data." },
+    { prazo: "Até 30 de setembro de 2026", percentual: 50, descricao: "Reembolso de 50% do valor pago." },
+    { prazo: "Após 30 de setembro de 2026", percentual: 0, descricao: "Não haverá reembolso após esta data." },
   ],
   instrucoes: "Solicitações de reembolso devem ser enviadas para cobeounifafibe@gmail.com com o número do protocolo de inscrição.",
 };

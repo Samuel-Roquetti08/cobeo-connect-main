@@ -194,7 +194,7 @@ async function enviarEmailConfirmacao(pedido: {
       <p><strong>Valor total pago:</strong> R$ ${pedido.valor_total.toFixed(2)}</p>
       <hr />
       <p><strong>Evento:</strong> ${EVENTO_INFO.data} — ${EVENTO_INFO.local}.</p>
-      <p><strong>Política de reembolso:</strong> até 10/09/2026, 50% do valor pago; após essa data, sem reembolso.
+      <p><strong>Política de reembolso:</strong> até 30/09/2026, 50% do valor pago; após essa data, sem reembolso.
       Solicitações via cobeounifafibe@gmail.com.</p>
     </div>
   `;
