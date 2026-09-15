@@ -9,6 +9,7 @@
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
+import { enviarEmailConfirmacao } from "../_shared/emailConfirmacao.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 // SUPABASE_SECRET_KEYS é injetado como dicionário JSON (permite rotação de
@@ -16,8 +17,108 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SECRET_KEY = JSON.parse(Deno.env.get("SUPABASE_SECRET_KEYS")!)["default"];
 const MP_ACCESS_TOKEN = Deno.env.get("MP_ACCESS_TOKEN")!;
 const SITE_URL = Deno.env.get("SITE_URL")!;
+// Usados só no caminho de pedido gratuito (cupom 100%), para reaproveitar o
+// e-mail de confirmação com crachá do fluxo pago.
+const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+const RESEND_FROM = Deno.env.get("RESEND_FROM") ?? "COBEO <onboarding@resend.dev>";
 
 const supabase = createClient(SUPABASE_URL, SECRET_KEY);
+
+interface PedidoPreferencia {
+  id: string;
+  nome: string;
+  email: string;
+  status: string;
+  valor_total: number;
+  mp_reference_id: string;
+  tem_inscricao: boolean;
+  tem_trabalho: boolean;
+  jantar_opcao: string | null;
+  valor_jantar: number | null;
+  cupom_codigo: string | null;
+}
+
+// Pedido gratuito: o Mercado Pago não cria preferência de R$ 0,00. Em vez de
+// barrar (o que impedia inscrição por cupom cortesia de 100%), confirmamos o
+// pedido aqui — MAS só quando um cupom PERCENTUAL de 100% e DISPONÍVEL justifica
+// o zero, revalidado no servidor via validar_cupom (nunca confia no client).
+// Qualquer outro total 0 (sem esse cupom) continua barrado, para não abrir
+// brecha de valor manipulado (valor_cursos/desconto vêm do insert do cliente —
+// ver incidente "valor_total manipulável"). Idempotente e à prova de corrida:
+// só um confirma, marca pago, consome o cupom e dispara o e-mail.
+async function confirmarPedidoGratuito(pedido: PedidoPreferencia): Promise<Response> {
+  if (!pedido.cupom_codigo) {
+    return jsonResponse({ error: "Pedido com valor inválido." }, 422);
+  }
+
+  const { data: cupomValidacao, error: cupomErr } = await supabase.rpc("validar_cupom", {
+    p_codigo: pedido.cupom_codigo,
+  });
+  if (cupomErr) {
+    console.error("[criar-preferencia] erro ao validar cupom do pedido gratuito", cupomErr);
+    return jsonResponse({ error: "Erro ao validar o cupom." }, 500);
+  }
+  const v = cupomValidacao as { valido?: boolean; tipo?: string; valor?: number } | null;
+  const cupomZeraLegitimo = Boolean(v?.valido) && v?.tipo === "percentual" && Number(v?.valor) >= 100;
+  if (!cupomZeraLegitimo) {
+    // total 0 sem um cupom 100% válido = não confiável (cupom já usado/expirado,
+    // fixo, ou valores manipulados no insert). Barra como antes.
+    return jsonResponse({ error: "Pedido com valor inválido." }, 422);
+  }
+
+  // Marca pago de forma idempotente (só se ainda pendente). O .select() devolve
+  // as linhas afetadas — 0 significa que outra chamada já confirmou (corrida).
+  const { data: atualizados, error: updErr } = await supabase
+    .from("pedidos")
+    .update({ status: "pago", pago_em: new Date().toISOString(), mp_payment_id: "GRATUITO_CUPOM_100" })
+    .eq("id", pedido.id)
+    .eq("status", "pendente")
+    .select("id");
+  if (updErr) {
+    console.error("[criar-preferencia] falha ao confirmar pedido gratuito", updErr);
+    return jsonResponse({ error: "Não foi possível confirmar a inscrição." }, 500);
+  }
+  if ((atualizados?.length ?? 0) === 0) {
+    // Outra chamada confirmou primeiro — não reprocessa cupom nem e-mail.
+    return jsonResponse({ gratuito: true, mpReferenceId: pedido.mp_reference_id, jaProcessado: true });
+  }
+
+  // Consome o cupom (usar_cupom só age em cupom disponível) e vincula cupom_id —
+  // mesmo padrão do webhook. Falha aqui não desfaz a inscrição já confirmada.
+  const { error: cupomUsoErr } = await supabase.rpc("usar_cupom", {
+    p_codigo: pedido.cupom_codigo,
+    p_pedido_id: pedido.id,
+  });
+  if (cupomUsoErr) {
+    console.error("[criar-preferencia] falha ao marcar cupom como utilizado", cupomUsoErr);
+  } else {
+    const { data: cupomRow } = await supabase
+      .from("cupons")
+      .select("id")
+      .eq("codigo", pedido.cupom_codigo.toUpperCase())
+      .maybeSingle();
+    if (cupomRow) {
+      await supabase.from("pedidos").update({ cupom_id: cupomRow.id }).eq("id", pedido.id);
+    }
+  }
+
+  await enviarEmailConfirmacao(
+    supabase,
+    { siteUrl: SITE_URL, resendApiKey: RESEND_API_KEY, resendFrom: RESEND_FROM },
+    {
+      id: pedido.id,
+      nome: pedido.nome,
+      email: pedido.email,
+      valor_total: 0,
+      tem_inscricao: pedido.tem_inscricao,
+      tem_trabalho: pedido.tem_trabalho,
+      jantar_opcao: pedido.jantar_opcao,
+      valor_jantar: Number(pedido.valor_jantar ?? 0),
+    },
+  );
+
+  return jsonResponse({ gratuito: true, mpReferenceId: pedido.mp_reference_id });
+}
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -41,9 +142,9 @@ Deno.serve(async (req: Request) => {
 
   const { data: pedido, error: pedidoError } = await supabase
     .from("pedidos")
-    .select("id, nome, email, status, valor_total, mp_reference_id, tem_inscricao, tem_trabalho")
+    .select("id, nome, email, status, valor_total, mp_reference_id, tem_inscricao, tem_trabalho, jantar_opcao, valor_jantar, cupom_codigo")
     .eq("id", pedidoId)
-    .maybeSingle();
+    .maybeSingle<PedidoPreferencia>();
 
   if (pedidoError) {
     console.error("[criar-preferencia] erro ao buscar pedido", pedidoError);
@@ -55,7 +156,15 @@ Deno.serve(async (req: Request) => {
   if (pedido.status === "pago") {
     return jsonResponse({ error: "Este pedido já foi pago." }, 409);
   }
-  if (!pedido.valor_total || pedido.valor_total <= 0) {
+
+  const valorTotal = Number(pedido.valor_total);
+  // Pedido gratuito (cupom 100%): confirma sem passar pelo Mercado Pago.
+  if (valorTotal === 0) {
+    return await confirmarPedidoGratuito(pedido);
+  }
+  // Negativo é impossível pelo cálculo do banco (desconto travado no valor base);
+  // se aparecer, é sinal de manipulação — barra.
+  if (valorTotal < 0) {
     return jsonResponse({ error: "Pedido com valor inválido." }, 422);
   }
 

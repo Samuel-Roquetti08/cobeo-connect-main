@@ -1181,6 +1181,12 @@ function PagamentoUnificado({
         body: { pedidoId },
       });
       if (error) throw new Error(error.message ?? "Erro ao iniciar o pagamento.");
+      // Pedido gratuito (cupom 100%): a Edge Function já confirmou a inscrição —
+      // não há checkout no Mercado Pago, vai direto pra página de sucesso.
+      if (data?.gratuito) {
+        window.location.href = `/inscricao/sucesso?ref=${data.mpReferenceId}`;
+        return;
+      }
       if (!data?.initPoint) throw new Error("Não foi possível iniciar o pagamento.");
 
       window.location.href = data.initPoint;
