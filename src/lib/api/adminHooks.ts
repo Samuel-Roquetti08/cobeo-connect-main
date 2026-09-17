@@ -98,10 +98,20 @@ export function useEnviarCertificados() {
 }
 
 // ─── Check-in e Crachás ──────────────────────────────────────────────────────
-import { getInscritosParaCracha } from "./adminData";
+import { getInscritosParaCracha, reenviarCrachas } from "./adminData";
 
 export const crachaKeys = { lista: ["admin", "crachas"] as const };
 
 export function useInscritosCracha() {
   return useQuery({ queryKey: crachaKeys.lista, queryFn: getInscritosParaCracha });
+}
+
+// Reenvia um lote de crachás via Edge Function. A tela reinvoca até `restantes`
+// zerar; a cada lote invalida a lista pra refletir quem já recebeu.
+export function useReenviarCrachas() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (opcoes?: { limite?: number; desde?: string }) => reenviarCrachas(opcoes),
+    onSuccess: () => qc.invalidateQueries({ queryKey: crachaKeys.lista }),
+  });
 }

@@ -1,12 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { useState, useEffect } from "react";
-import { Search, Printer, QrCode as QrIcon, Loader2, AlertCircle, RefreshCw } from "lucide-react";
-import { useInscritosCracha } from "@/lib/api/adminHooks";
+import { Search, Printer, QrCode as QrIcon, Loader2, AlertCircle, RefreshCw, Mail, MailCheck } from "lucide-react";
+import { useInscritosCracha, useReenviarCrachas } from "@/lib/api/adminHooks";
 import { type CrachaInscrito } from "@/lib/api/adminData";
 import { CATEGORIA_LABELS } from "@/lib/api/adminTypes";
 import { normalizarBusca } from "@/lib/utils";
 import QRCode from "qrcode";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/admin/crachas")({
   head: () => ({ meta: [{ title: "Crachás · Admin · II COBEO" }] }),
@@ -84,12 +85,49 @@ function CrachaPreview({ inscrito, mini = false }: { inscrito: CrachaInscrito; m
 
 function CrachasPage() {
   const { data: inscritos, isLoading, isError, error, refetch } = useInscritosCracha();
+  const reenviar = useReenviarCrachas();
   const [q, setQ] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  // Progresso acumulado ao longo dos lotes (a function processa em lotes e a
+  // tela reinvoca até a fila do servidor zerar).
+  const [progresso, setProgresso] = useState<{ enviados: number; falhas: number } | null>(null);
 
   const all = inscritos ?? [];
   const filtered = all.filter((i) => !q || normalizarBusca(i.nome).includes(normalizarBusca(q)) || normalizarBusca(i.email).includes(normalizarBusca(q)));
   const inscritoSelecionado = all.find((i) => i.inscritoId === selected) ?? null;
+  const naoReceberam = all.filter((i) => !i.crachaReenviadoEm);
+  const enviandoEmail = reenviar.isPending;
+
+  // Dispara o reenvio em lotes até a fila do servidor zerar. `todos` manda
+  // `desde` = agora, o que recoloca na fila quem já recebeu antes (campanha de
+  // véspera); sem isso, só vai pra quem nunca recebeu. A elegibilidade é sempre
+  // recalculada no servidor — o filtro de busca desta tela não interfere.
+  async function handleReenviar(todos: boolean) {
+    setConfirmOpen(false);
+    const desde = todos ? new Date().toISOString() : undefined;
+    let enviados = 0;
+    let falhas = 0;
+    setProgresso({ enviados, falhas });
+    try {
+      for (let i = 0; i < 500; i++) {
+        const r = await reenviar.mutateAsync(desde ? { desde } : undefined);
+        enviados += r.enviados;
+        falhas += r.falhas;
+        setProgresso({ enviados, falhas });
+        if (r.restantes === 0) break;
+        if (r.enviados === 0) break; // nenhum avanço neste lote — evita girar em falso
+      }
+      toast.success("Reenvio de crachás concluído.", {
+        description: `${enviados} enviado${enviados === 1 ? "" : "s"}${falhas ? `, ${falhas} com falha` : ""}.`,
+      });
+    } catch (e) {
+      toast.error("Erro ao reenviar crachás", { description: (e as Error)?.message });
+    } finally {
+      setProgresso(null);
+      refetch();
+    }
+  }
 
   // Imprime todos os crachás filtrados — gera QR Codes e abre janela de impressão
   async function handlePrintAll() {
@@ -172,15 +210,31 @@ function CrachasPage() {
                 className="w-full rounded-md border border-[#d9d9d9] bg-white py-2 pl-9 pr-3 text-sm outline-none focus:border-[#731111]"
               />
             </div>
-            <button
-              onClick={handlePrintAll}
-              disabled={filtered.length === 0}
-              className="flex items-center gap-2 rounded-md bg-[#731111] px-4 py-2 text-sm font-medium text-white hover:bg-[#8a1515] disabled:opacity-50"
-            >
-              <Printer className="h-4 w-4" /> Imprimir todos ({filtered.length})
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={handlePrintAll}
+                disabled={filtered.length === 0}
+                className="flex items-center gap-2 rounded-md bg-[#731111] px-4 py-2 text-sm font-medium text-white hover:bg-[#8a1515] disabled:opacity-50"
+              >
+                <Printer className="h-4 w-4" /> Imprimir todos ({filtered.length})
+              </button>
+              <button
+                onClick={() => setConfirmOpen(true)}
+                disabled={enviandoEmail || all.length === 0}
+                className="flex items-center gap-2 rounded-md border border-[#731111] px-4 py-2 text-sm font-medium text-[#731111] hover:bg-[#731111] hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {enviandoEmail ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
+                Enviar por e-mail{naoReceberam.length > 0 ? ` (${naoReceberam.length})` : ""}
+              </button>
+            </div>
           </div>
-          <p className="mt-2 text-[11px] text-[#6b6b6b]">Exibindo apenas inscritos com pagamento confirmado.</p>
+          <p className="mt-2 text-[11px] text-[#6b6b6b]">
+            Exibindo apenas inscritos com pagamento confirmado. O envio por e-mail vale para todos os
+            confirmados (a fila é calculada no servidor), não só para os filtrados pela busca.
+            {enviandoEmail && progresso
+              ? ` Enviando… ${progresso.enviados} enviado${progresso.enviados === 1 ? "" : "s"}${progresso.falhas ? `, ${progresso.falhas} com falha` : ""}.`
+              : ""}
+          </p>
         </div>
 
         <div className="overflow-hidden rounded-xl border border-[#d9d9d9] bg-white">
@@ -191,18 +245,29 @@ function CrachasPage() {
                 <th className="px-4 py-3">Nome</th>
                 <th className="px-4 py-3">Código</th>
                 <th className="px-4 py-3">Categoria</th>
+                <th className="px-4 py-3">E-mail</th>
                 <th className="px-4 py-3 text-right">Crachá</th>
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 ? (
-                <tr><td colSpan={5} className="px-4 py-12 text-center text-[#6b6b6b]">Nenhum inscrito confirmado.</td></tr>
+                <tr><td colSpan={6} className="px-4 py-12 text-center text-[#6b6b6b]">Nenhum inscrito confirmado.</td></tr>
               ) : filtered.map((i, idx) => (
                 <tr key={i.inscritoId} className="border-t border-[#f0eceb] hover:bg-[#faf8f7]">
                   <td className="px-4 py-3 text-[12px] text-[#6b6b6b]">{idx + 1}</td>
                   <td className="px-4 py-3 font-medium text-[#1a1a1a]">{i.nome}</td>
                   <td className="px-4 py-3"><code className="rounded bg-[#f3f0ee] px-2 py-0.5 font-mono text-[11px] text-[#731111]">{i.codigoInscricao}</code></td>
                   <td className="px-4 py-3 text-[12px] text-[#6b6b6b]">{i.categoria ? CATEGORIA_LABELS[i.categoria] : "—"}</td>
+                  <td className="px-4 py-3 text-[12px]">
+                    {i.crachaReenviadoEm ? (
+                      <span className="inline-flex items-center gap-1 text-green-700">
+                        <MailCheck className="h-3.5 w-3.5" />
+                        {new Date(i.crachaReenviadoEm).toLocaleDateString("pt-BR")}
+                      </span>
+                    ) : (
+                      <span className="text-[#b45309]">A enviar</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-right">
                     <button onClick={() => setSelected(i.inscritoId)} className="rounded p-1.5 text-[#6b6b6b] hover:bg-[#f3f0ee] hover:text-[#731111]">
                       <QrIcon className="h-4 w-4" />
@@ -245,6 +310,45 @@ function CrachasPage() {
           )}
         </div>
       </aside>
+
+      {confirmOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setConfirmOpen(false)} />
+          <div className="relative w-full max-w-md overflow-hidden rounded-xl bg-white shadow-2xl">
+            <div className="p-6">
+              <h3 className="text-lg font-semibold text-[#1a1a1a]">Enviar crachás por e-mail</h3>
+              <p className="mt-2 text-sm text-[#6b6b6b]">
+                O e-mail leva o crachá com o QR de check-in. Diferente do certificado, o crachá pode ser
+                reenviado quantas vezes for preciso — por isso as duas opções abaixo.
+              </p>
+              <ul className="mt-3 space-y-1 text-[13px] text-[#6b6b6b]">
+                <li><strong>{naoReceberam.length}</strong> ainda não receberam o e-mail do crachá.</li>
+                <li><strong>{all.length}</strong> inscritos confirmados no total.</li>
+              </ul>
+            </div>
+            <footer className="flex flex-wrap justify-end gap-2 border-t border-[#f0eceb] px-6 py-4">
+              <button onClick={() => setConfirmOpen(false)} className="rounded-md px-4 py-2 text-sm font-medium text-[#6b6b6b] hover:bg-[#f3f0ee]">
+                Cancelar
+              </button>
+              <button
+                onClick={() => handleReenviar(true)}
+                disabled={enviandoEmail || all.length === 0}
+                className="rounded-md border border-[#731111] px-4 py-2 text-sm font-semibold text-[#731111] hover:bg-[#f3f0ee] disabled:opacity-40"
+              >
+                Reenviar para todos ({all.length})
+              </button>
+              <button
+                onClick={() => handleReenviar(false)}
+                disabled={enviandoEmail || naoReceberam.length === 0}
+                className="flex items-center gap-2 rounded-md bg-[#731111] px-4 py-2 text-sm font-semibold text-white hover:bg-[#8a1515] disabled:opacity-40"
+              >
+                {enviandoEmail && <Loader2 className="h-4 w-4 animate-spin" />}
+                Enviar para quem não recebeu ({naoReceberam.length})
+              </button>
+            </footer>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

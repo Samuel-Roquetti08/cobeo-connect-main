@@ -18,7 +18,7 @@ export const EVENTO_INFO = {
   local: "Centro Universitário UNIFAFIBE — Bebedouro/SP",
 };
 
-const CURSOS_INFO: Record<string, { titulo: string; dia: string; horario: string }> = {
+export const CURSOS_INFO: Record<string, { titulo: string; dia: string; horario: string }> = {
   hmi: { titulo: "Protocolos Clínicos Inovadores para o Tratamento da HMI", dia: "07/10", horario: "14h–15h45" },
   estetica_cirurgia: { titulo: "Noções de Estética e Cirurgia Ortognática", dia: "07/10", horario: "16h–18h" },
   hof_ortodontia: { titulo: "HOF ou Ortodontia", dia: "07/10", horario: "19h–21h" },
@@ -29,7 +29,7 @@ const CURSOS_INFO: Record<string, { titulo: string; dia: string; horario: string
   endodontia: { titulo: "Endodontia", dia: "09/10", horario: "16h–18h" },
 };
 
-const JANTAR_LABELS: Record<string, string> = {
+export const JANTAR_LABELS: Record<string, string> = {
   com_restricao: "Com restrição de bebidas",
   sem_restricao: "Sem restrição de bebidas",
 };
@@ -54,7 +54,7 @@ export interface PedidoConfirmacao {
 // Gera o QR do crachá como PNG em base64, pronto pra ir como anexo inline
 // (CID) do Resend. Aponta pra /admin/checkin?codigo=X. Nunca lança — falha na
 // geração do QR não pode impedir o e-mail (o código em texto já é o fallback).
-async function gerarQrCodeBase64(siteUrl: string, codigo: string): Promise<string | null> {
+export async function gerarQrCodeBase64(siteUrl: string, codigo: string): Promise<string | null> {
   try {
     const url = `${siteUrl}/admin/checkin?codigo=${encodeURIComponent(codigo)}`;
     const buffer: Uint8Array = await QRCode.toBuffer(url, {
@@ -69,6 +69,58 @@ async function gerarQrCodeBase64(siteUrl: string, codigo: string): Promise<strin
     console.error("[emailConfirmacao] falha ao gerar QR code do crachá", e);
     return null;
   }
+}
+
+export interface MontarCrachaHtmlParams {
+  nome: string;
+  codigo: string;
+  linhasCursos: string;
+  jantarOpcao: string | null;
+  qrContentId: string;
+  temQr: boolean;
+  qrBase64: string | null;
+}
+
+// Monta o HTML do crachá (tabela do badge). Usado em e-mail de confirmação
+// (enviarEmailConfirmacao) e em reenvio (reenviar-crachas).
+export function montarCrachaHtml(params: MontarCrachaHtmlParams): string {
+  const linhaJantarCracha = params.jantarOpcao
+    ? `<div style="margin-top:8px;font-size:12px;color:#1a1a1a;"><strong>Jantar de Encerramento:</strong> ${JANTAR_LABELS[params.jantarOpcao] ?? params.jantarOpcao}</div>`
+    : "";
+
+  return `
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:460px;margin:16px 0;border:2px solid #731111;border-radius:8px;border-collapse:separate;overflow:hidden;">
+      <tr>
+        <td style="background-color:#731111;padding:12px 16px;font-family:Arial,Helvetica,sans-serif;">
+          <div style="font-size:14px;font-weight:bold;color:#ffffff;">${EVENTO_INFO.nome}</div>
+          <div style="font-size:11px;color:#ffffff;opacity:0.85;">${EVENTO_INFO.data} · ${EVENTO_INFO.local}</div>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:16px;font-family:Arial,Helvetica,sans-serif;">
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;">
+            <tr>
+              <td style="vertical-align:top;">
+                <div style="font-size:16px;font-weight:bold;color:#1a1a1a;">${params.nome}</div>
+                <div style="margin-top:10px;font-size:10px;color:#6b6b6b;text-transform:uppercase;">Código de inscrição</div>
+                <div style="font-size:18px;font-weight:bold;color:#731111;font-family:'Courier New',monospace;">${params.codigo}</div>
+                ${params.linhasCursos ? `<div style="margin-top:10px;font-size:10px;color:#6b6b6b;text-transform:uppercase;">Cursos</div><ul style="margin:4px 0 0;padding-left:18px;font-size:12px;color:#1a1a1a;">${params.linhasCursos}</ul>` : ""}
+                ${linhaJantarCracha}
+              </td>
+              <td style="width:130px;text-align:center;vertical-align:top;">
+                ${params.qrBase64
+                  ? `<img src="cid:${params.qrContentId}" width="120" height="120" alt="QR code de check-in do código ${params.codigo}" style="display:block;margin:0 auto;border:0;" />`
+                  : ""}
+              </td>
+            </tr>
+          </table>
+          <p style="margin:12px 0 0;font-size:11px;color:#6b6b6b;">
+            Apresente este código na entrada do evento${params.qrBase64 ? " (ou peça pro fiscal ler o QR acima)" : ""}. Se o QR não aparecer, o código em texto já basta.
+          </p>
+        </td>
+      </tr>
+    </table>
+  `;
 }
 
 // Monta e envia o e-mail de confirmação (crachá + QR). Segue o mesmo contrato
@@ -103,10 +155,6 @@ export async function enviarEmailConfirmacao(
     })
     .join("");
 
-  const linhaJantarCracha = pedido.jantar_opcao
-    ? `<div style="margin-top:8px;font-size:12px;color:#1a1a1a;"><strong>Jantar de Encerramento:</strong> ${JANTAR_LABELS[pedido.jantar_opcao] ?? pedido.jantar_opcao}</div>`
-    : "";
-
   const linhaTrabalho = trabalhoRow?.titulo
     ? `<p><strong>Trabalho submetido:</strong> ${trabalhoRow.titulo}</p>`
     : "";
@@ -118,39 +166,15 @@ export async function enviarEmailConfirmacao(
   const qrContentId = "cracha-qrcode";
 
   const crachaHtml = codigo
-    ? `
-      <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:460px;margin:16px 0;border:2px solid #731111;border-radius:8px;border-collapse:separate;overflow:hidden;">
-        <tr>
-          <td style="background-color:#731111;padding:12px 16px;font-family:Arial,Helvetica,sans-serif;">
-            <div style="font-size:14px;font-weight:bold;color:#ffffff;">${EVENTO_INFO.nome}</div>
-            <div style="font-size:11px;color:#ffffff;opacity:0.85;">${EVENTO_INFO.data} · ${EVENTO_INFO.local}</div>
-          </td>
-        </tr>
-        <tr>
-          <td style="padding:16px;font-family:Arial,Helvetica,sans-serif;">
-            <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;">
-              <tr>
-                <td style="vertical-align:top;">
-                  <div style="font-size:16px;font-weight:bold;color:#1a1a1a;">${pedido.nome}</div>
-                  <div style="margin-top:10px;font-size:10px;color:#6b6b6b;text-transform:uppercase;">Código de inscrição</div>
-                  <div style="font-size:18px;font-weight:bold;color:#731111;font-family:'Courier New',monospace;">${codigo}</div>
-                  ${linhasCursos ? `<div style="margin-top:10px;font-size:10px;color:#6b6b6b;text-transform:uppercase;">Cursos</div><ul style="margin:4px 0 0;padding-left:18px;font-size:12px;color:#1a1a1a;">${linhasCursos}</ul>` : ""}
-                  ${linhaJantarCracha}
-                </td>
-                <td style="width:130px;text-align:center;vertical-align:top;">
-                  ${qrBase64
-                    ? `<img src="cid:${qrContentId}" width="120" height="120" alt="QR code de check-in do código ${codigo}" style="display:block;margin:0 auto;border:0;" />`
-                    : ""}
-                </td>
-              </tr>
-            </table>
-            <p style="margin:12px 0 0;font-size:11px;color:#6b6b6b;">
-              Apresente este código na entrada do evento${qrBase64 ? " (ou peça pro fiscal ler o QR acima)" : ""}. Se o QR não aparecer, o código em texto já basta.
-            </p>
-          </td>
-        </tr>
-      </table>
-    `
+    ? montarCrachaHtml({
+        nome: pedido.nome,
+        codigo,
+        linhasCursos,
+        jantarOpcao: pedido.jantar_opcao,
+        qrContentId,
+        temQr: !!qrBase64,
+        qrBase64,
+      })
     : "";
 
   const html = `

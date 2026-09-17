@@ -26,6 +26,7 @@ import type {
   CupomCategoria,
   ElegivelCertificado,
   ResultadoEnvioCertificados,
+  ResultadoReenvioCrachas,
   ElegivelJantar,
   MotivoPendencia,
 } from "./adminTypes";
@@ -440,6 +441,36 @@ export async function enviarCertificados(limite?: number): Promise<ResultadoEnvi
   return data as ResultadoEnvioCertificados;
 }
 
+// Reenvia o crachá (badge com QR) por e-mail em lote, via Edge Function.
+// Diferente do certificado, o crachá PODE ser reenviado: sem `desde`, a fila é
+// só quem nunca recebeu; com `desde` (ISO), volta pra fila todo mundo cujo
+// último reenvio é anterior a esse instante — é assim que se faz uma campanha
+// nova na véspera do evento. Idempotente/retomável: a UI reinvoca até
+// `restantes` zerar.
+export async function reenviarCrachas(opcoes?: { limite?: number; desde?: string }): Promise<ResultadoReenvioCrachas> {
+  const body: Record<string, unknown> = {};
+  if (opcoes?.limite) body.limite = opcoes.limite;
+  if (opcoes?.desde) body.desde = opcoes.desde;
+
+  const { data, error } = await supabase.functions.invoke("reenviar-crachas", { body });
+  if (error) {
+    // Mesmo tratamento do envio de certificados: functions.invoke embrulha o
+    // erro HTTP num FunctionsHttpError cujo corpo fica em error.context.
+    const ctx = (error as { context?: Response }).context;
+    if (ctx && typeof ctx.json === "function") {
+      try {
+        const corpo = await ctx.json();
+        if (corpo?.error) throw new Error(corpo.mensagem ?? corpo.error);
+      } catch (e) {
+        if (e instanceof Error) throw e;
+      }
+    }
+    throw error;
+  }
+  await registrarLog("reenviar_crachas", "crachas", null, { ...(data as object), desde: opcoes?.desde ?? null });
+  return data as ResultadoReenvioCrachas;
+}
+
 // ─── CHECK-IN ────────────────────────────────────────────────────────────────
 // Busca um inscrito pelo código (COBEO-XXXX), nome ou e-mail, trazendo seus
 // cursos e as presenças já registradas. Usado na tela de check-in por curso.
@@ -619,6 +650,7 @@ export interface CrachaInscrito {
   codigoInscricao: string;
   categoria: CategoriaParticipante | null;
   cursos: string[];
+  crachaReenviadoEm: string | null;
 }
 
 export async function getInscritosParaCracha(): Promise<CrachaInscrito[]> {
@@ -633,7 +665,7 @@ export async function getInscritosParaCracha(): Promise<CrachaInscrito[]> {
   const ids = pedidos.map((p) => p.id);
   const { data: inscritos } = await supabase
     .from("inscritos")
-    .select("id, pedido_id, codigo_inscricao")
+    .select("id, pedido_id, codigo_inscricao, cracha_reenviado_em")
     .in("pedido_id", ids);
   const { data: cursos } = await supabase
     .from("pedido_cursos")
@@ -659,6 +691,7 @@ export async function getInscritosParaCracha(): Promise<CrachaInscrito[]> {
         codigoInscricao: ins.codigo_inscricao,
         categoria: (p.categoria as CategoriaParticipante) ?? null,
         cursos: cursosPorPedido.get(p.id) ?? [],
+        crachaReenviadoEm: ins.cracha_reenviado_em ?? null,
       };
     });
 }

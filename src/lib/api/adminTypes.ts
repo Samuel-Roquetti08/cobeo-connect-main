@@ -175,6 +175,13 @@ export interface ResultadoEnvioCertificados {
   restantes: number;
 }
 
+// Resultado de um lote de reenvio da Edge Function reenviar-crachas.
+export interface ResultadoReenvioCrachas {
+  enviados: number;
+  falhas: number;
+  restantes: number;
+}
+
 // ─── Elegibilidade do jantar de encerramento (T5) ─────────────────────────────
 // Comprar não basta: elegível = comprou o jantar E compareceu a todos os
 // cursos que comprou (via check-ins em `presencas`). cursosFaltantes traz os
