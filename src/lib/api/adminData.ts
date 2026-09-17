@@ -417,8 +417,14 @@ export class CargaHorariaPendenteError extends Error {
 // cada inscrito. Idempotente/retomável — a UI reinvoca até `restantes` zerar. O
 // carimbo global certificados_enviados_em é gravado pela function ao zerar a fila.
 export async function enviarCertificados(limite?: number): Promise<ResultadoEnvioCertificados> {
+  // A function exige sessão de admin (não aceita só a chave publicável do site),
+  // então o token da sessão vai explícito no header.
+  const { data: { session } } = await supabase.auth.getSession();
+  const headers = session ? { Authorization: `Bearer ${session.access_token}` } : undefined;
+
   const { data, error } = await supabase.functions.invoke("enviar-certificados", {
     body: limite ? { limite } : {},
+    headers,
   });
   if (error) {
     // functions.invoke embrulha erros HTTP num FunctionsHttpError cujo corpo (com
@@ -452,7 +458,12 @@ export async function reenviarCrachas(opcoes?: { limite?: number; desde?: string
   if (opcoes?.limite) body.limite = opcoes.limite;
   if (opcoes?.desde) body.desde = opcoes.desde;
 
-  const { data, error } = await supabase.functions.invoke("reenviar-crachas", { body });
+  // A function exige sessão de admin (não aceita só a chave publicável do site),
+  // então o token da sessão vai explícito no header.
+  const { data: { session } } = await supabase.auth.getSession();
+  const headers = session ? { Authorization: `Bearer ${session.access_token}` } : undefined;
+
+  const { data, error } = await supabase.functions.invoke("reenviar-crachas", { body, headers });
   if (error) {
     // Mesmo tratamento do envio de certificados: functions.invoke embrulha o
     // erro HTTP num FunctionsHttpError cujo corpo fica em error.context.

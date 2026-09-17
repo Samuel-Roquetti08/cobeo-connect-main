@@ -4,8 +4,9 @@
 // Ação de admin: reenvio em lote do crachá (badge com QR) por e-mail para
 // participantes com pagamento confirmado. Diferente de certificados (que nunca
 // são reenviados), crachás podem ser reenviados multiplas vezes (ex: na
-// véspera do evento). Protegida por JWT do Supabase (deploy sem --no-verify-jwt)
-// — só admin autenticado invoca.
+// véspera do evento). Só admin autenticado invoca: além do verify_jwt do
+// gateway, a guarda exigirAdmin() confere que o token é de uma sessão de
+// usuário de verdade (a chave publicável do site sozinha não passa).
 //
 // Idempotente e retomável: elegibilidade é sempre recalculada no servidor (via
 // vw_crachas_reenvio — nunca confia no client) e cada inscrito é marcado em
@@ -15,6 +16,7 @@
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
+import { exigirAdmin } from "../_shared/authAdmin.ts";
 import { gerarQrCodeBase64, montarCrachaHtml, EVENTO_INFO, CURSOS_INFO } from "../_shared/emailConfirmacao.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -129,9 +131,15 @@ Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+  // Ação de admin: exige sessão de usuário autenticado, não só uma credencial
+  // do projeto (a chave publicável é pública — ver _shared/authAdmin.ts).
+  const negado = await exigirAdmin(supabase, req);
+  if (negado) return negado;
+
   if (req.method !== "POST") {
     return jsonResponse({ error: "Método não permitido." }, 405);
   }
+
   if (!RESEND_API_KEY) {
     return jsonResponse({ error: "RESEND_API_KEY não configurado." }, 500);
   }
