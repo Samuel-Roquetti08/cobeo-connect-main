@@ -44,6 +44,9 @@ export function NormasTrabalhoAberto() {
   return (
     <div className="space-y-4 rounded-lg border border-border bg-background p-4">
       <h3 className="font-display text-sm font-bold text-foreground">Normas de Submissão de Trabalho</h3>
+      <p className="rounded-md bg-primary/10 px-3 py-2 font-body text-sm font-semibold text-primary">
+        Valor da submissão: R$ {trabalhoConfig.valor.toFixed(2).replace(".", ",")}
+      </p>
       {normasSecoes().map((s) => (
         <div key={s.titulo}>
           <h4 className="font-body text-xs font-semibold uppercase tracking-wider text-muted-foreground">

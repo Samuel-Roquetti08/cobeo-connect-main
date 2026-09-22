@@ -168,16 +168,10 @@ export async function gerarCertificadoPdf(dados: DadosCertificado): Promise<Uint
     }
   }
 
-  // Rodapé: data + assinatura
-  const yAssinatura = 96;
+  // Rodapé: só a data — sem espaço de assinatura (certificado não é assinado
+  // fisicamente nem por imagem de assinatura; decisão do Fabiano).
   const dataFmt = dados.dataEmissao.toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
-  textoCentralizado(page, `${EVENTO_CERT.cidade}, ${dataFmt}.`, yAssinatura + 46, serif, 11, CINZA);
-
-  const larguraLinha = 260;
-  const xLinha = (W - larguraLinha) / 2;
-  page.drawLine({ start: { x: xLinha, y: yAssinatura }, end: { x: xLinha + larguraLinha, y: yAssinatura }, thickness: 0.8, color: TINTA });
-  textoCentralizado(page, "Comissão Organizadora", yAssinatura - 16, sansBold, 11, TINTA);
-  textoCentralizado(page, EVENTO_CERT.nome, yAssinatura - 30, sans, 9, CINZA);
+  textoCentralizado(page, `${EVENTO_CERT.cidade}, ${dataFmt}.`, 96, serif, 11, CINZA);
 
   // Autenticidade (código de inscrição) — canto inferior
   page.drawText(`Código de inscrição: ${dados.codigoInscricao}`, {
