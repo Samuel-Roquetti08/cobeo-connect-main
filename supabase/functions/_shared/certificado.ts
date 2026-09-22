@@ -6,12 +6,12 @@
 // (Helvetica/Times) já cobrem os acentos do português via encoding WinAnsi —
 // por isso não é preciso embutir fonte externa.
 //
-// CARGA HORÁRIA: é pendência do Fabiano (ver src/data/event.ts,
-// CARGA_HORARIA_PENDENTE_LABEL). Enquanto os valores reais não chegam, todo
-// curso aqui fica com cargaHoraria: null e cargaHorariaPendente() retorna true —
-// a Edge Function usa isso para RECUSAR o envio, evitando mandar certificado com
-// carga horária em branco para participante real. Quando o dado chegar, basta
-// preencher os números neste mapa: nenhuma outra mudança de código é necessária.
+// CARGA HORÁRIA: definida pelo Fabiano em 21/09/2026 — 2h uniformes para todos
+// os 14 cursos (padronização de certificado; "Fluxo Digital na Implantodontia"
+// dura 1h15 na grade e ainda assim certifica 2h). A trava cargaHorariaPendente()
+// continua ativa de propósito: se um curso novo entrar aqui sem carga horária, a
+// Edge Function volta a recusar o lote com 422 em vez de emitir certificado com
+// carga em branco. Fonte de verdade do conteúdo continua src/data/event.ts (D13).
 
 import { PDFDocument, StandardFonts, rgb, PDFFont, PDFPage } from "npm:pdf-lib@1.17.1";
 
@@ -20,20 +20,20 @@ import { PDFDocument, StandardFonts, rgb, PDFFont, PDFPage } from "npm:pdf-lib@1
 // front — mesmo padrão do CURSOS_INFO em webhook-mercadopago. Se os títulos ou a
 // carga horária mudarem lá, atualizar aqui também.
 export const CURSOS_CERT: Record<string, { titulo: string; cargaHoraria: number | null }> = {
-  hmi: { titulo: "Protocolos Clínicos Inovadores para o Tratamento de HMI", cargaHoraria: null },
-  estetica_cirurgia: { titulo: "Noções de Estética e Cirurgia Ortognática", cargaHoraria: null },
-  handson_preparo_biomecanico: { titulo: "Hands-on: Preparo Biomecânico de Alta Performance — Sistemas Rotatórios de NiTi Tratados Termicamente", cargaHoraria: null },
-  handson_traumatologia: { titulo: "Hands-on: Trauma de Mandíbula", cargaHoraria: null },
-  handson_odontologia_esporte: { titulo: "Hands-on: Odontologia do Esporte — Protetores Bucais e Performance Esportiva", cargaHoraria: null },
-  odontologia_hospitalar: { titulo: "Odontologia Hospitalar: Reabilitação de Fissura Labiopalatina e Cuidado Multiprofissional", cargaHoraria: null },
-  handson_gengivodesign: { titulo: "Hands-on: Gengivodesign Suture — Introdução à Microsutura em Periodontia", cargaHoraria: null },
-  handson_facetas: { titulo: "Hands-on: Facetas Estratificadas sem Resina Composta com Naturalidade", cargaHoraria: null },
-  handson_implantodontia: { titulo: "Hands-on: Inovações na Implantodontia", cargaHoraria: null },
-  handson_harmonizacao_labial: { titulo: "Hands-on: Harmonização com Preenchimento Labial", cargaHoraria: null },
-  odontologia_legal: { titulo: "Odontologia Legal: Campos de Atuação, Mercado de Trabalho e Casuística", cargaHoraria: null },
-  fluxo_digital_implantodontia: { titulo: "Fluxo Digital na Implantodontia: Da Teoria à Prática Clínica", cargaHoraria: null },
-  dor_nao_odontogenica: { titulo: "Odontologia Além dos Dentes: Quando a Dor não é Odontogênica", cargaHoraria: null },
-  alinhadores_ortodonticos: { titulo: "Alinhadores Ortodônticos: Indicações, Limitações e Estratégias Clínicas para a Classe II", cargaHoraria: null },
+  hmi: { titulo: "Protocolos Clínicos Inovadores para o Tratamento de HMI", cargaHoraria: 2 },
+  estetica_cirurgia: { titulo: "Noções de Estética e Cirurgia Ortognática", cargaHoraria: 2 },
+  handson_preparo_biomecanico: { titulo: "Hands-on: Preparo Biomecânico de Alta Performance — Sistemas Rotatórios de NiTi Tratados Termicamente", cargaHoraria: 2 },
+  handson_traumatologia: { titulo: "Hands-on: Trauma de Mandíbula", cargaHoraria: 2 },
+  handson_odontologia_esporte: { titulo: "Hands-on: Odontologia do Esporte — Protetores Bucais e Performance Esportiva", cargaHoraria: 2 },
+  odontologia_hospitalar: { titulo: "Odontologia Hospitalar: Reabilitação de Fissura Labiopalatina e Cuidado Multiprofissional", cargaHoraria: 2 },
+  handson_gengivodesign: { titulo: "Hands-on: Gengivodesign Suture — Introdução à Microsutura em Periodontia", cargaHoraria: 2 },
+  handson_facetas: { titulo: "Hands-on: Facetas Estratificadas sem Resina Composta com Naturalidade", cargaHoraria: 2 },
+  handson_implantodontia: { titulo: "Hands-on: Inovações na Implantodontia", cargaHoraria: 2 },
+  handson_harmonizacao_labial: { titulo: "Hands-on: Harmonização com Preenchimento Labial", cargaHoraria: 2 },
+  odontologia_legal: { titulo: "Odontologia Legal: Campos de Atuação, Mercado de Trabalho e Casuística", cargaHoraria: 2 },
+  fluxo_digital_implantodontia: { titulo: "Fluxo Digital na Implantodontia: Da Teoria à Prática Clínica", cargaHoraria: 2 },
+  dor_nao_odontogenica: { titulo: "Odontologia Além dos Dentes: Quando a Dor não é Odontogênica", cargaHoraria: 2 },
+  alinhadores_ortodonticos: { titulo: "Alinhadores Ortodônticos: Indicações, Limitações e Estratégias Clínicas para a Classe II", cargaHoraria: 2 },
 };
 
 export const EVENTO_CERT = {

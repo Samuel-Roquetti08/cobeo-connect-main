@@ -24,10 +24,12 @@ export type CategoriaId = typeof categorias[number]["id"];
 
 // ─── Cursos (Grade Científica) ────────────────────────────────────────────────
 // cursoRef é o ID usado no check-in, banco e crachá
-// cargaHoraria: pendência do Fabiano (item 4 da lista de pendências) — não
-// inventar valores. null = ainda não definida; usar CARGA_HORARIA_PENDENTE_LABEL
-// em qualquer exibição (ex.: certificado) até o dado real chegar.
-export const CARGA_HORARIA_PENDENTE_LABEL = "[LOREM - AGUARDANDO DEFINIÇÃO DO CLIENTE]";
+// cargaHoraria: definida pelo Fabiano em 21/09/2026 — 2 horas para TODOS os
+// cursos, uniforme, por decisão dele. É uma padronização de certificado, não a
+// duração de grade: "Fluxo Digital na Implantodontia" ocupa 21h–22h15 (1h15) no
+// cronograma e mesmo assim certifica 2h. Espelhar qualquer mudança aqui em
+// supabase/functions/_shared/certificado.ts (CURSOS_CERT) — a Edge Function não
+// importa este arquivo.
 
 // grupoExclusivo: cursos com o mesmo valor acontecem ao mesmo tempo (hands-on
 // paralelos) — o participante escolhe só UM do grupo. Aplicado no seletor de
@@ -45,7 +47,7 @@ export const cursos = [
     diaId: "dia1",
     horario: "14h–16h",
     periodo: "tarde",
-    cargaHoraria: null as number | null,
+    cargaHoraria: 2 as number | null,
     grupoExclusivo: null as string | null,
     vagasLimitadas: false,
   },
@@ -58,7 +60,7 @@ export const cursos = [
     diaId: "dia1",
     horario: "16h–18h",
     periodo: "tarde",
-    cargaHoraria: null as number | null,
+    cargaHoraria: 2 as number | null,
     grupoExclusivo: null as string | null,
     vagasLimitadas: false,
   },
@@ -71,7 +73,7 @@ export const cursos = [
     diaId: "dia1",
     horario: "19h–21h",
     periodo: "noite",
-    cargaHoraria: null as number | null,
+    cargaHoraria: 2 as number | null,
     grupoExclusivo: "dia1_1921" as string | null,
     vagasLimitadas: true,
   },
@@ -84,7 +86,7 @@ export const cursos = [
     diaId: "dia1",
     horario: "19h–21h",
     periodo: "noite",
-    cargaHoraria: null as number | null,
+    cargaHoraria: 2 as number | null,
     grupoExclusivo: "dia1_1921" as string | null,
     vagasLimitadas: true,
   },
@@ -97,7 +99,7 @@ export const cursos = [
     diaId: "dia1",
     horario: "19h–21h",
     periodo: "noite",
-    cargaHoraria: null as number | null,
+    cargaHoraria: 2 as number | null,
     grupoExclusivo: "dia1_1921" as string | null,
     vagasLimitadas: true,
   },
@@ -110,7 +112,7 @@ export const cursos = [
     diaId: "dia2",
     horario: "14h–16h",
     periodo: "tarde",
-    cargaHoraria: null as number | null,
+    cargaHoraria: 2 as number | null,
     grupoExclusivo: null as string | null,
     vagasLimitadas: false,
   },
@@ -123,7 +125,7 @@ export const cursos = [
     diaId: "dia2",
     horario: "16h–18h",
     periodo: "tarde",
-    cargaHoraria: null as number | null,
+    cargaHoraria: 2 as number | null,
     grupoExclusivo: "dia2_1618" as string | null,
     vagasLimitadas: true,
   },
@@ -136,7 +138,7 @@ export const cursos = [
     diaId: "dia2",
     horario: "16h–18h",
     periodo: "tarde",
-    cargaHoraria: null as number | null,
+    cargaHoraria: 2 as number | null,
     grupoExclusivo: "dia2_1618" as string | null,
     vagasLimitadas: true,
   },
@@ -149,7 +151,7 @@ export const cursos = [
     diaId: "dia2",
     horario: "16h–18h",
     periodo: "tarde",
-    cargaHoraria: null as number | null,
+    cargaHoraria: 2 as number | null,
     grupoExclusivo: "dia2_1618" as string | null,
     vagasLimitadas: true,
   },
@@ -162,7 +164,7 @@ export const cursos = [
     diaId: "dia2",
     horario: "16h–18h",
     periodo: "tarde",
-    cargaHoraria: null as number | null,
+    cargaHoraria: 2 as number | null,
     grupoExclusivo: "dia2_1618" as string | null,
     vagasLimitadas: true,
   },
@@ -175,7 +177,7 @@ export const cursos = [
     diaId: "dia2",
     horario: "19h–21h",
     periodo: "noite",
-    cargaHoraria: null as number | null,
+    cargaHoraria: 2 as number | null,
     grupoExclusivo: null as string | null,
     vagasLimitadas: false,
   },
@@ -188,7 +190,7 @@ export const cursos = [
     diaId: "dia2",
     horario: "21h–22h15",
     periodo: "noite",
-    cargaHoraria: null as number | null,
+    cargaHoraria: 2 as number | null,
     grupoExclusivo: null as string | null,
     vagasLimitadas: false,
   },
@@ -201,7 +203,7 @@ export const cursos = [
     diaId: "dia3",
     horario: "14h–16h",
     periodo: "tarde",
-    cargaHoraria: null as number | null,
+    cargaHoraria: 2 as number | null,
     grupoExclusivo: null as string | null,
     vagasLimitadas: false,
   },
@@ -214,7 +216,7 @@ export const cursos = [
     diaId: "dia3",
     horario: "16h–18h",
     periodo: "tarde",
-    cargaHoraria: null as number | null,
+    cargaHoraria: 2 as number | null,
     grupoExclusivo: null as string | null,
     vagasLimitadas: false,
   },
