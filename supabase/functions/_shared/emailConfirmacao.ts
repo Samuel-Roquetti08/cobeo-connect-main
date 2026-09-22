@@ -18,15 +18,25 @@ export const EVENTO_INFO = {
   local: "Centro Universitário UNIFAFIBE — Bebedouro/SP",
 };
 
-export const CURSOS_INFO: Record<string, { titulo: string; dia: string; horario: string }> = {
-  hmi: { titulo: "Protocolos Clínicos Inovadores para o Tratamento da HMI", dia: "07/10", horario: "14h–15h45" },
-  estetica_cirurgia: { titulo: "Noções de Estética e Cirurgia Ortognática", dia: "07/10", horario: "16h–18h" },
-  hof_ortodontia: { titulo: "HOF ou Ortodontia", dia: "07/10", horario: "19h–21h" },
-  odontologia_hospitalar: { titulo: "Odontologia Hospitalar", dia: "08/10", horario: "14h–15h45" },
-  estetica_periodontal: { titulo: "Estética Periodontal", dia: "08/10", horario: "16h–18h" },
-  odontologia_legal: { titulo: "Odontologia Legal", dia: "08/10", horario: "19h–21h" },
-  dor_nao_odontogenica: { titulo: "Odontologia Além dos Dentes", dia: "09/10", horario: "14h–15h45" },
-  endodontia: { titulo: "Endodontia", dia: "09/10", horario: "16h–18h" },
+// Só dia/horário: o título que aparece no crachá vem de pedido_cursos.curso_titulo
+// (snapshot gravado na compra), nunca daqui — por isso não se duplica título neste
+// mapa. Os refs precisam bater exatamente com os ids de `cursos` em event.ts; ref
+// ausente aqui faz o curso sair no e-mail sem dia nem horário.
+export const CURSOS_INFO: Record<string, { dia: string; horario: string }> = {
+  hmi: { dia: "07/10", horario: "14h–16h" },
+  estetica_cirurgia: { dia: "07/10", horario: "16h–18h" },
+  handson_preparo_biomecanico: { dia: "07/10", horario: "19h–21h" },
+  handson_traumatologia: { dia: "07/10", horario: "19h–21h" },
+  handson_odontologia_esporte: { dia: "07/10", horario: "19h–21h" },
+  odontologia_hospitalar: { dia: "08/10", horario: "14h–16h" },
+  handson_gengivodesign: { dia: "08/10", horario: "16h–18h" },
+  handson_facetas: { dia: "08/10", horario: "16h–18h" },
+  handson_implantodontia: { dia: "08/10", horario: "16h–18h" },
+  handson_harmonizacao_labial: { dia: "08/10", horario: "16h–18h" },
+  odontologia_legal: { dia: "08/10", horario: "19h–21h" },
+  fluxo_digital_implantodontia: { dia: "08/10", horario: "21h–22h15" },
+  dor_nao_odontogenica: { dia: "09/10", horario: "14h–16h" },
+  alinhadores_ortodonticos: { dia: "09/10", horario: "16h–18h" },
 };
 
 export const JANTAR_LABELS: Record<string, string> = {

@@ -55,7 +55,7 @@ async function enviarUm(row: CrachaReenvioRow): Promise<boolean> {
   // Monta as linhas de cursos (dia e horário)
   const linhasCursos = (pedidoCursos ?? [])
     .map((pc) => {
-      const info = (CURSOS_INFO as Record<string, { titulo: string; dia: string; horario: string }>)[pc.curso_ref];
+      const info = CURSOS_INFO[pc.curso_ref];
       return `<li style="margin-bottom:4px;">${pc.curso_titulo}${info ? ` — ${info.dia}, ${info.horario}` : ""}</li>`;
     })
     .join("");

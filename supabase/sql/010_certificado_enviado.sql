@@ -19,39 +19,33 @@ alter table inscritos
 
 -- Recria a view de elegibilidade expondo também o timestamp de envio por
 -- participante, para a UI do admin mostrar quem já recebeu e a Edge Function
--- filtrar os pendentes. Definição idêntica à de 001_vw_elegiveis_certificado.sql,
--- só somando a coluna i.certificado_enviado_em.
+-- filtrar os pendentes.
+--
+-- ATENÇÃO — por que a definição abaixo repete a original em vez de reescrevê-la:
+-- CREATE OR REPLACE VIEW no Postgres só aceita ACRESCENTAR colunas no fim; não
+-- deixa renomear, remover nem reordenar as que já existem. A primeira versão
+-- desta migration punha certificado_enviado_em na posição 6, no lugar de
+-- status_pagamento — o Postgres abortava com "cannot change name of view column
+-- status_pagamento to certificado_enviado_em" e, como o SQL Editor roda tudo em
+-- uma transação, o ALTER TABLE acima era revertido junto. Era por isso que a
+-- coluna nunca aparecia no banco mesmo depois de "rodar" a migration.
+-- Mantemos as 9 colunas originais na ordem exata e somamos a nova como 10ª.
 create or replace view vw_elegiveis_certificado as
-with cursos_comprados as (
-  select pedido_id, count(*) as total_cursos
-  from pedido_cursos
-  group by pedido_id
-),
-presencas_validas as (
-  select
-    i.pedido_id,
-    count(distinct pr.curso_ref) as cursos_presentes
-  from inscritos i
-  join presencas pr on pr.inscrito_id = i.id
-  join pedido_cursos pc on pc.pedido_id = i.pedido_id and pc.curso_ref = pr.curso_ref
-  group by i.pedido_id
-)
 select
-  i.id                              as inscrito_id,
+  i.id                          as inscrito_id,
   i.codigo_inscricao,
-  p.id                              as pedido_id,
+  p.id                          as pedido_id,
   p.nome,
   p.email,
-  i.certificado_enviado_em,
-  coalesce(cc.total_cursos, 0)      as total_cursos,
-  coalesce(pv.cursos_presentes, 0)  as cursos_presentes,
-  (
-    p.status = 'pago'
-    and coalesce(cc.total_cursos, 0) > 0
-    and coalesce(pv.cursos_presentes, 0) = coalesce(cc.total_cursos, 0)
-  )                                  as elegivel
+  p.status                      as status_pagamento,
+  count(distinct pc.curso_ref)  as total_cursos,
+  count(distinct pr.curso_ref)  as cursos_presentes,
+  count(distinct pc.curso_ref) > 0
+    and count(distinct pc.curso_ref) = count(distinct pr.curso_ref) as elegivel,
+  i.certificado_enviado_em
 from inscritos i
 join pedidos p on p.id = i.pedido_id
-left join cursos_comprados cc on cc.pedido_id = p.id
-left join presencas_validas pv on pv.pedido_id = p.id
-where p.status = 'pago';
+join pedido_cursos pc on pc.pedido_id = p.id
+left join presencas pr on pr.inscrito_id = i.id and pr.curso_ref = pc.curso_ref
+where p.status = 'pago'
+group by i.id, i.codigo_inscricao, p.id, p.nome, p.email, p.status, i.certificado_enviado_em;
