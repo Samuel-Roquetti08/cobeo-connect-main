@@ -406,7 +406,7 @@ function FlowEvento({
     ? jantar.opcoes.find((o) => o.id === jantarOpcao)?.valor ?? 0
     : 0;
 
-  // Jantar disponível apenas com 3+ cursos
+  // Jantar disponível apenas com jantar.minimosCursos+ cursos
   const jantarDisponivel = cursosSelecionados.length >= jantar.minimosCursos;
 
   // Se desmarcar cursos e ficar abaixo do mínimo, remove o jantar
@@ -718,7 +718,7 @@ function FlowEvento({
                   )}
                 </div>
 
-                {/* 3. Jantar — aparece apenas com 3+ cursos */}
+                {/* 3. Jantar — aparece apenas com jantar.minimosCursos+ cursos */}
                 <AnimatePresence>
                   {jantarDisponivel && (
                     <motion.div
@@ -742,7 +742,7 @@ function FlowEvento({
                             🎉 Jantar de Encerramento — {jantar.local}
                           </p>
                           <p className="mb-3 font-body text-xs text-muted-foreground">
-                            {jantar.data} · Opcional para participantes com 3+ cursos
+                            {jantar.data} · Opcional para participantes com {jantar.minimosCursos}+ cursos
                           </p>
                           <div className="grid gap-2 sm:grid-cols-2">
                             {/* Opção: não quero */}

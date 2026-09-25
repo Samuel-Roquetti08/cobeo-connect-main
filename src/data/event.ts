@@ -300,11 +300,11 @@ export const jantar = {
     { id: "com_restricao"  as const, label: "Com restrição de bebidas",  valor: 100 },
     { id: "sem_restricao"  as const, label: "Sem restrição de bebidas",  valor: 160 },
   ],
-  // Jantar só disponível para quem comprar 3 ou mais cursos
-  minimosCursos: 3,
+  // Jantar só disponível para quem comprar 2 ou mais cursos
+  minimosCursos: 2,
   // Acompanhantes não precisam de cursos — gerenciado pela equipe do Fabiano
   observacoes: [
-    "A compra do jantar está condicionada à participação em pelo menos 3 cursos.",
+    "A compra do jantar está condicionada à participação em pelo menos 2 cursos.",
     "Menores de idade devem estar acompanhados de um responsável maior. Haverá checagem de documentação na entrada.",
     "Reservas limitadas — sujeito ao controle no painel administrativo.",
   ],

@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { Lock, Unlock, Utensils, Loader2, AlertCircle, RefreshCw, ShieldCheck, BookOpen } from "lucide-react";
 import { useConfiguracoes, useUpdateConfiguracoes } from "@/lib/api/adminHooks";
-import { cursos as cursosEvento } from "@/data/event";
+import { cursos as cursosEvento, jantar } from "@/data/event";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/admin/configuracoes")({
@@ -159,7 +159,7 @@ function ConfiguracoesPage() {
         description={
           config.jantarBloqueado
             ? "A venda de ingressos do jantar está BLOQUEADA. Use quando as vagas do Boulevard esgotarem."
-            : "A venda de ingressos do jantar está ABERTA. Disponível para quem comprar 3+ cursos."
+            : `A venda de ingressos do jantar está ABERTA. Disponível para quem comprar ${jantar.minimosCursos}+ cursos.`
         }
         status={config.jantarBloqueado ? "Bloqueado" : "Aberto"}
         statusColor={config.jantarBloqueado ? "#991b1b" : "#2d7a3a"}
