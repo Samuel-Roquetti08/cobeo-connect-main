@@ -682,7 +682,7 @@ function FlowEvento({
                                         {curso.titulo}
                                         {bloqueado && (
                                           <span className="ml-2 rounded-full bg-muted px-2 py-0.5 font-body text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                                            Indisponível
+                                            Esgotado
                                           </span>
                                         )}
                                         {!bloqueado && curso.vagasLimitadas && (
