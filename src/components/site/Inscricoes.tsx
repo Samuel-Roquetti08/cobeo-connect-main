@@ -955,11 +955,11 @@ function FlowTrabalho({
               </div>
             </div>
 
-            <Field label="Título do Trabalho" htmlFor="trabalho-titulo" required>
+            <Field label={`Título do Trabalho (${work.titulo.length}/120)`} htmlFor="trabalho-titulo" required>
               <input
                 id="trabalho-titulo"
                 value={work.titulo}
-                onChange={(e) => setWork({ ...work, titulo: e.target.value })}
+                onChange={(e) => setWork({ ...work, titulo: e.target.value.slice(0, 120) })}
                 className="w-full rounded-md border border-input bg-surface px-3 py-2 font-body text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
               />
             </Field>
