@@ -786,6 +786,8 @@ import gestos from "@/assets/images/patrocinadores/gestos.png";
 import anaLuizaCabral from "@/assets/images/patrocinadores/ana-luiza-cabral.png";
 import dentalUniShop from "@/assets/images/patrocinadores/dental-uni-shop.png";
 import apcdBebedouro from "@/assets/images/patrocinadores/apcd-bebedouro.png";
+import realPalaceHotel from "@/assets/images/patrocinadores/real-palace-hotel.png";
+import cervejariaMaltvs from "@/assets/images/patrocinadores/cervejaria-maltvs.png";
 
 export interface Patrocinador {
   nome: string;
@@ -815,6 +817,8 @@ export const patrocinadores: Patrocinador[] = [
   { nome: "Dra. Ana Luiza Cabral", logo: anaLuizaCabral },
   { nome: "Dental Uni Shop", logo: dentalUniShop },
   { nome: "APCD Regional de Bebedouro", logo: apcdBebedouro },
+  { nome: "Real Palace Hotel", logo: realPalaceHotel },
+  { nome: "Cervejaria Maltvs", logo: cervejariaMaltvs, fundoEscuro: true },
 ];
 
 // precos (legado)
