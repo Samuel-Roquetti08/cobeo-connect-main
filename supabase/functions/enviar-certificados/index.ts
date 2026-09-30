@@ -21,7 +21,10 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { exigirAdmin } from "../_shared/authAdmin.ts";
-import { gerarCertificadoPdf, cargaHorariaPendente, CursoCertificado } from "../_shared/certificado.ts";
+import {
+  gerarCertificadoPdf, cargaHorariaPendente, ARQUIVOS_ARTE,
+  type ArteCertificado, type CursoCertificado,
+} from "../_shared/certificado.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SECRET_KEY = JSON.parse(Deno.env.get("SUPABASE_SECRET_KEYS")!)["default"];
@@ -37,6 +40,24 @@ const LIMITE_PADRAO = 20;
 const PAUSA_MS = 350;
 
 const dormir = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+// Arte do certificado (fundo + imagens de assinatura) fica num bucket PRIVADO,
+// nunca no repositório: o repo é público e assinatura não pode ficar baixável.
+const BUCKET_ARTE = "certificado-arte";
+
+async function carregarArte(): Promise<ArteCertificado> {
+  const baixar = async (arquivo: string) => {
+    const { data, error } = await supabase.storage.from(BUCKET_ARTE).download(arquivo);
+    if (error || !data) throw new Error(`${BUCKET_ARTE}/${arquivo}: ${error?.message ?? "não encontrado"}`);
+    return new Uint8Array(await data.arrayBuffer());
+  };
+  const [fundo, assinaturaCoordenador, assinaturaProReitor] = await Promise.all([
+    baixar(ARQUIVOS_ARTE.fundo),
+    baixar(ARQUIVOS_ARTE.assinaturaCoordenador),
+    baixar(ARQUIVOS_ARTE.assinaturaProReitor),
+  ]);
+  return { fundo, assinaturaCoordenador, assinaturaProReitor };
+}
 
 // Uint8Array -> base64 (formato que o Resend espera no campo `content` do anexo).
 // Feito em blocos para não estourar o stack em PDFs maiores.
@@ -57,7 +78,7 @@ interface ElegivelRow {
   email: string;
 }
 
-async function enviarUm(row: ElegivelRow): Promise<boolean> {
+async function enviarUm(row: ElegivelRow, arte: ArteCertificado): Promise<boolean> {
   const { data: pedidoCursos, error: cursosErr } = await supabase
     .from("pedido_cursos")
     .select("curso_ref, curso_titulo")
@@ -79,8 +100,7 @@ async function enviarUm(row: ElegivelRow): Promise<boolean> {
       nome: row.nome,
       codigoInscricao: row.codigo_inscricao,
       cursos,
-      dataEmissao: new Date(),
-    });
+    }, arte);
   } catch (e) {
     console.error("[enviar-certificados] falha ao gerar PDF", row.inscrito_id, e);
     return false;
@@ -204,10 +224,28 @@ Deno.serve(async (req: Request) => {
     }
   }
 
+  let arte: ArteCertificado | null = null;
+  if (fila.length > 0) {
+    try {
+      arte = await carregarArte();
+    } catch (e) {
+      console.error("[enviar-certificados] arte do certificado indisponível", e);
+      return jsonResponse(
+        {
+          error: "arte_certificado_indisponivel",
+          mensagem:
+            `Arte do certificado não encontrada no Storage (bucket "${BUCKET_ARTE}"). ` +
+            `Suba ${Object.values(ARQUIVOS_ARTE).join(", ")} antes de enviar. Nenhum certificado foi enviado.`,
+        },
+        500,
+      );
+    }
+  }
+
   let enviados = 0;
   let falhas = 0;
   for (const row of fila) {
-    const ok = await enviarUm(row);
+    const ok = await enviarUm(row, arte!);
     if (ok) enviados++;
     else falhas++;
     await dormir(PAUSA_MS);
