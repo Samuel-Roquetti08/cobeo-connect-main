@@ -964,12 +964,12 @@ function FlowTrabalho({
               />
             </Field>
 
-            <Field label={`Resumo (${work.resumo.length}/500)`} htmlFor="trabalho-resumo" required>
+            <Field label={`Resumo (${work.resumo.length}/1750)`} htmlFor="trabalho-resumo" required>
               <textarea
                 id="trabalho-resumo"
                 value={work.resumo}
-                onChange={(e) => setWork({ ...work, resumo: e.target.value.slice(0, 500) })}
-                rows={4}
+                onChange={(e) => setWork({ ...work, resumo: e.target.value.slice(0, 1750) })}
+                rows={10}
                 className="w-full rounded-md border border-input bg-surface px-3 py-2 font-body text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
               />
             </Field>
