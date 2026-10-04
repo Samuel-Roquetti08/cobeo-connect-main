@@ -105,7 +105,7 @@ export const cursos = [
   },
   {
     id: "odontologia_hospitalar",
-    titulo: "Odontologia Hospitalar: Reabilitação de Fissura Labiopalatina e Cuidado Multiprofissional",
+    titulo: "Da UTI ao Centro de Referência: Odontologia Hospitalar — Reabilitação de Fissura Labiopalatina e Cuidado Multiprofissional",
     palestrante: "Profa. Dra. Reyna Aguilar Quispe · Profa. Dra. Stela Carolina V. Baldin Aguiar",
     instituicao: "UNORTE / FUNFARME · Hospital Austa",
     dia: "08/10",
@@ -257,6 +257,9 @@ export const programacao = [
         titulo: "Odontologia Hospitalar",
         speaker: "",
         tipo: "curso" as const,
+        // Não são hands-on paralelos: são 2 palestras em sequência dentro do
+        // mesmo curso — rotuladas "Palestra N", sem o selo de simultâneas.
+        sessoesSequenciais: true,
         sessoes: [
           { titulo: "Impacto da Odontologia na Reabilitação de Pacientes com Fissura Labiopalatina", speaker: "Profa. Dra. Reyna Aguilar Quispe · UNORTE/FUNFARME" },
           { titulo: "Da UTI ao Centro de Referência: A Trajetória da Odontologia Hospitalar", speaker: "Profa. Dra. Stela Carolina V. Baldin Aguiar · FUNFARME/Hospital Austa" },
@@ -788,6 +791,10 @@ import dentalUniShop from "@/assets/images/patrocinadores/dental-uni-shop.png";
 import apcdBebedouro from "@/assets/images/patrocinadores/apcd-bebedouro.png";
 import realPalaceHotel from "@/assets/images/patrocinadores/real-palace-hotel.png";
 import cervejariaMaltvs from "@/assets/images/patrocinadores/cervejaria-maltvs.png";
+// Estas três entraram exatamente como vieram (JPEG, sem remoção de fundo).
+import medicalSupport from "@/assets/images/patrocinadores/medical-support.jpg";
+import infoccoFormaturas from "@/assets/images/patrocinadores/infocco-formaturas.jpg";
+import dentalShop from "@/assets/images/patrocinadores/dental-shop.jpg";
 
 export interface Patrocinador {
   nome: string;
@@ -819,6 +826,9 @@ export const patrocinadores: Patrocinador[] = [
   { nome: "APCD Regional de Bebedouro", logo: apcdBebedouro },
   { nome: "Real Palace Hotel", logo: realPalaceHotel },
   { nome: "Cervejaria Maltvs", logo: cervejariaMaltvs, fundoEscuro: true },
+  { nome: "Medical Support", logo: medicalSupport },
+  { nome: "inFOCCO Formaturas", logo: infoccoFormaturas },
+  { nome: "Dental Shop", logo: dentalShop },
 ];
 
 // precos (legado)

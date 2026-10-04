@@ -35,7 +35,7 @@ export const CURSOS_CERT: Record<string, { titulo: string; cargaHoraria: number 
   handson_preparo_biomecanico: { titulo: "Hands-on: Preparo Biomecânico de Alta Performance — Sistemas Rotatórios de NiTi Tratados Termicamente", cargaHoraria: 2 },
   handson_traumatologia: { titulo: "Hands-on: Trauma de Mandíbula", cargaHoraria: 2 },
   handson_odontologia_esporte: { titulo: "Hands-on: Odontologia do Esporte — Protetores Bucais e Performance Esportiva", cargaHoraria: 2 },
-  odontologia_hospitalar: { titulo: "Odontologia Hospitalar: Reabilitação de Fissura Labiopalatina e Cuidado Multiprofissional", cargaHoraria: 2 },
+  odontologia_hospitalar: { titulo: "Da UTI ao Centro de Referência: Odontologia Hospitalar — Reabilitação de Fissura Labiopalatina e Cuidado Multiprofissional", cargaHoraria: 2 },
   handson_gengivodesign: { titulo: "Hands-on: Gengivodesign Suture — Introdução à Microsutura em Periodontia", cargaHoraria: 2 },
   handson_facetas: { titulo: "Hands-on: Facetas Estratificadas sem Resina Composta com Naturalidade", cargaHoraria: 2 },
   handson_implantodontia: { titulo: "Hands-on: Inovações na Implantodontia", cargaHoraria: 2 },

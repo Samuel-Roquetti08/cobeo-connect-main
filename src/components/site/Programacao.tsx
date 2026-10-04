@@ -52,6 +52,7 @@ export function Programacao() {
           {dia.itens.map((it) => {
             const isBreak = it.tipo === "break";
             const simultaneas = "sessoes" in it && it.sessoes && it.sessoes.length > 1;
+            const sequenciais = "sessoesSequenciais" in it && it.sessoesSequenciais;
             return (
               <motion.div
                 key={it.hora + it.titulo}
@@ -86,15 +87,17 @@ export function Programacao() {
                     <h4 className="font-body text-[14px] font-semibold leading-snug text-foreground">
                       {it.titulo}
                     </h4>
-                    <span className="mt-1.5 inline-flex items-center gap-1.5 rounded-full bg-[#f3ead9] px-2.5 py-1 font-body text-[10px] font-semibold uppercase tracking-wider text-[#8a6a1f]">
-                      <Split className="h-3 w-3" aria-hidden="true" />
-                      Sessões simultâneas
-                    </span>
+                    {!sequenciais && (
+                      <span className="mt-1.5 inline-flex items-center gap-1.5 rounded-full bg-[#f3ead9] px-2.5 py-1 font-body text-[10px] font-semibold uppercase tracking-wider text-[#8a6a1f]">
+                        <Split className="h-3 w-3" aria-hidden="true" />
+                        Sessões simultâneas
+                      </span>
+                    )}
                     <div className={`mt-2 grid grid-cols-1 gap-3 ${GRID_COLS_MD[it.sessoes!.length] ?? "md:grid-cols-2"}`}>
                       {it.sessoes!.map((s, i) => (
                         <div key={i} className="rounded-lg border border-border bg-surface px-3 py-2.5">
                           <div className="font-body text-[10px] font-bold uppercase tracking-wider text-gold">
-                            Hands-on {i + 1}
+                            {sequenciais ? "Palestra" : "Hands-on"} {i + 1}
                           </div>
                           <h5 className="mt-1 font-body text-[13px] font-semibold leading-snug text-foreground">
                             {s.titulo}
