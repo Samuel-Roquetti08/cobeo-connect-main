@@ -791,10 +791,11 @@ import dentalUniShop from "@/assets/images/patrocinadores/dental-uni-shop.png";
 import apcdBebedouro from "@/assets/images/patrocinadores/apcd-bebedouro.png";
 import realPalaceHotel from "@/assets/images/patrocinadores/real-palace-hotel.png";
 import cervejariaMaltvs from "@/assets/images/patrocinadores/cervejaria-maltvs.png";
-// Estas três entraram exatamente como vieram (JPEG, sem remoção de fundo).
+// Estas quatro entraram exatamente como vieram (JPEG, sem remoção de fundo).
 import medicalSupport from "@/assets/images/patrocinadores/medical-support.jpg";
 import infoccoFormaturas from "@/assets/images/patrocinadores/infocco-formaturas.jpg";
 import dentalShop from "@/assets/images/patrocinadores/dental-shop.jpg";
+import apisvida from "@/assets/images/patrocinadores/apisvida.jpg";
 
 export interface Patrocinador {
   nome: string;
@@ -829,6 +830,7 @@ export const patrocinadores: Patrocinador[] = [
   { nome: "Medical Support", logo: medicalSupport },
   { nome: "inFOCCO Formaturas", logo: infoccoFormaturas },
   { nome: "Dental Shop", logo: dentalShop },
+  { nome: "Apisvida", logo: apisvida },
 ];
 
 // precos (legado)
