@@ -497,7 +497,7 @@ export interface InscritoCheckin {
   presencas: { curso_ref: string; confirmado_em: string }[];
 }
 
-export async function buscarParaCheckin(termo: string): Promise<InscritoCheckin | null> {
+export async function buscarParaCheckin(termo: string, cursoRef?: string): Promise<InscritoCheckin | null> {
   const t = termo.trim();
   if (!t) return null;
 
@@ -515,16 +515,34 @@ export async function buscarParaCheckin(termo: string): Promise<InscritoCheckin 
     inscritoRow = byCode;
     pedidoId = byCode.pedido_id;
   } else {
-    // Busca por nome ou e-mail no pedido
-    const { data: pedidoMatch } = await supabase
+    // Busca por nome ou e-mail no pedido. A mesma pessoa pode ter vários
+    // pedidos (duplicados pendentes, compras separadas) — pegar "o primeiro"
+    // já gravou presença em pedido pendente enquanto o pago ficava sem
+    // (incidente de 07/10/2026). Prioridade: pago com o curso selecionado >
+    // pago > qualquer outro; empate fica com o mais recente.
+    const { data: candidatos } = await supabase
       .from("pedidos")
-      .select("id")
+      .select("id, status, created_at")
       .eq("tem_inscricao", true)
       .or(`nome.ilike.%${t}%,email.ilike.%${t}%`)
-      .limit(1)
-      .maybeSingle();
-    if (!pedidoMatch) return null;
-    pedidoId = pedidoMatch.id;
+      .order("created_at", { ascending: false })
+      .limit(50);
+    if (!candidatos || candidatos.length === 0) return null;
+
+    let comCurso = new Set<string>();
+    if (cursoRef) {
+      const { data: pcs } = await supabase
+        .from("pedido_cursos")
+        .select("pedido_id")
+        .eq("curso_ref", cursoRef)
+        .in("pedido_id", candidatos.map((c) => c.id));
+      comCurso = new Set((pcs ?? []).map((pc) => pc.pedido_id));
+    }
+    const prioridade = (c: { id: string; status: string }) =>
+      (c.status === "pago" ? 2 : 0) + (comCurso.has(c.id) ? 1 : 0);
+    // sort é estável: dentro da mesma prioridade mantém a ordem do mais recente
+    const melhor = [...candidatos].sort((a, b) => prioridade(b) - prioridade(a))[0];
+    pedidoId = melhor.id;
     const { data: ins } = await supabase
       .from("inscritos")
       .select("id, pedido_id, codigo_inscricao")

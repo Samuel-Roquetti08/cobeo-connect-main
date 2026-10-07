@@ -44,6 +44,10 @@ function CheckinPage() {
   const [scannerErro, setScannerErro] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const qrInstanceRef = useRef<Html5Qrcode | null>(null);
+  // Ref (e não dependência do useCallback) pra trocar de curso não disparar
+  // de novo a busca automática do ?codigo= da URL.
+  const cursoRefAtual = useRef(cursoRef);
+  cursoRefAtual.current = cursoRef;
 
   const buscar = useCallback(async (q: string) => {
     const term = q.trim();
@@ -52,7 +56,7 @@ function CheckinPage() {
     setNotFound(false);
     setFound(null);
     try {
-      const res = await buscarParaCheckin(term);
+      const res = await buscarParaCheckin(term, cursoRefAtual.current);
       if (res) setFound(res);
       else setNotFound(true);
     } catch (e) {
