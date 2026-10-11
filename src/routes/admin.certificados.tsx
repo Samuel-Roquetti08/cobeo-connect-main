@@ -96,8 +96,7 @@ function CertificadosPage() {
           Elegibilidade calculada automaticamente: pedido pago e presença registrada em todos os cursos
           comprados. O botão gera o PDF do certificado e envia por e-mail (com anexo) a cada participante
           elegível que ainda não recebeu — pode ser clicado de novo com segurança, nunca reenvia para quem
-          já recebeu. A carga horária de cada curso ainda é pendência do Fabiano; enquanto não for
-          preenchida, o envio é recusado.
+          já recebeu.
         </p>
       </div>
 
